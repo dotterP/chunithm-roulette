@@ -3,6 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta http-equiv="Content-Security-Policy"
+content="default-src 'self';
+connect-src https://api.chunirec.net;
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+font-src https://fonts.gstatic.com;
+img-src 'self' data:;
+script-src 'self' 'unsafe-inline';
+base-uri 'none';
+form-action 'self';">
+
 <title>CHUNITHM 楽曲ルーレット</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
@@ -330,7 +341,7 @@ input[type="number"] { -moz-appearance: textfield; }
   <div class="card-title">⚙ chunirec 設定</div>
   <div class="row">
     <label>APIトークン</label>
-    <input type="password" id="token" placeholder="chunirecアクセストークン" />
+    <div style="display:flex;gap:8px;flex:1;"><input type="password" id="token" placeholder="chunirecアクセストークン" style="flex:1;" /><button type="button" id="toggleToken" class="btn-sub" style="width:auto;padding:8px 12px;">👁</button></div>
   </div>
   <div class="row">
     <label>地域</label>
@@ -631,6 +642,73 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('chunirec_region', regionEl.value);
   });
 });
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const tokenEl = document.getElementById('token');
+
+  const saved = localStorage.getItem('chunirec_token');
+  if (saved) tokenEl.value = saved;
+
+  tokenEl.addEventListener('input', () => {
+    localStorage.setItem('chunirec_token', tokenEl.value);
+  });
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'btn-sub';
+  clearBtn.textContent = '保存済みトークンを削除';
+  clearBtn.style.marginTop = '8px';
+
+  clearBtn.onclick = () => {
+    localStorage.removeItem('chunirec_token');
+    tokenEl.value = '';
+    alert('保存済みトークンを削除しました');
+  };
+
+  document.getElementById('apiCard').appendChild(clearBtn);
+
+  window.addEventListener('beforeunload', () => {
+    if (tokenEl.value.length > 200) {
+      localStorage.removeItem('chunirec_token');
+    }
+  });
+});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const token = document.getElementById('token');
+  const toggle = document.getElementById('toggleToken');
+
+  if (toggle) {
+    toggle.onclick = () => {
+      token.type = token.type === 'password' ? 'text' : 'password';
+    };
+  }
+
+  // Auto load if token exists
+  const saved = localStorage.getItem('chunirec_token');
+  if (saved && typeof loadScores === 'function') {
+    setTimeout(() => {
+      loadScores().catch?.(()=>{});
+    }, 500);
+  }
+});
+
+// Improve auth error message
+const _origLoadScores = window.loadScores;
+if (_origLoadScores) {
+  window.loadScores = async function() {
+    try {
+      return await _origLoadScores();
+    } catch(e) {
+      throw e;
+    }
+  }
+}
 </script>
 
 </body>
