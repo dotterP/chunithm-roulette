@@ -419,6 +419,15 @@ input[type="number"] { -moz-appearance: textfield; }
     <span class="filter-label">ジャンル</span>
     <div class="chips" id="genreFilter"></div>
   </div>
+
+  <div style="margin-top:12px;">
+    <span class="filter-label">バージョン</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+      <button type="button" class="chip" style="font-size:11px;padding:3px 10px;" onclick="setAllVersions(true)">全選択</button>
+      <button type="button" class="chip" style="font-size:11px;padding:3px 10px;" onclick="setAllVersions(false)">全解除</button>
+    </div>
+    <div class="chips" id="versionFilter"></div>
+  </div>
 </div>
 
 <div class="pool-info" id="poolInfo" style="display:none;"></div>
@@ -438,12 +447,46 @@ input[type="number"] { -moz-appearance: textfield; }
 
 <div id="spinArea" style="display:none;">
   <button class="btn-main" id="spinBtn" onclick="spin()" style="font-size:22px;padding:18px;letter-spacing:4px;">🎯 SPIN!</button>
-  <button class="btn-sub" onclick="spin()">もう一回まわす</button>
 </div>
 
 <script>
 let records = [];
 let genres = new Set();
+let musicMeta = {}; // id -> { release, artist, bpm }
+
+// CHUNITHMのバージョンとリリース日の対応
+const VERSIONS = [
+  { name: 'CHUNITHM',           from: '2015-07-16', to: '2016-02-03' },
+  { name: 'CHUNITHM PLUS',      from: '2016-02-04', to: '2016-08-24' },
+  { name: 'AIR',                from: '2016-08-25', to: '2017-02-08' },
+  { name: 'AIR PLUS',           from: '2017-02-09', to: '2017-08-23' },
+  { name: 'STAR',               from: '2017-08-24', to: '2018-03-07' },
+  { name: 'STAR PLUS',          from: '2018-03-08', to: '2018-10-24' },
+  { name: 'AMAZON',             from: '2018-10-25', to: '2019-04-10' },
+  { name: 'AMAZON PLUS',        from: '2019-04-11', to: '2019-10-23' },
+  { name: 'CRYSTAL',            from: '2019-10-24', to: '2020-07-15' },
+  { name: 'CRYSTAL PLUS',       from: '2020-07-16', to: '2021-01-13' },
+  { name: 'PARADISE',           from: '2021-01-14', to: '2021-05-12' },
+  { name: 'PARADISE LOST',      from: '2021-05-13', to: '2021-11-03' },
+  { name: 'NEW!!',              from: '2021-11-04', to: '2022-04-13' },
+  { name: 'NEW PLUS!!',         from: '2022-04-14', to: '2022-10-12' },
+  { name: 'SUN',                from: '2022-10-13', to: '2023-04-11' },
+  { name: 'SUN PLUS',           from: '2023-04-12', to: '2023-10-04' },
+  { name: 'LUMINOUS',           from: '2023-10-05', to: '2024-06-11' },
+  { name: 'LUMINOUS PLUS',      from: '2024-06-12', to: '2024-12-18' },
+  { name: 'VERSE',              from: '2024-12-19', to: '2025-07-15' },
+  { name: 'X-VERSE',            from: '2025-07-16', to: '2025-12-10' },
+  { name: 'X-VERSE-X',          from: '2025-12-11', to: '9999-12-31' },
+];
+
+function getVersion(releaseDate) {
+  if (!releaseDate) return null;
+  const d = releaseDate.slice(0, 10);
+  for (const v of VERSIONS) {
+    if (d >= v.from && d <= v.to) return v.name;
+  }
+  return null;
+}
 
 function setStatus(type, msg) {
   document.getElementById('statusDot').className = 'dot ' + type;
@@ -472,15 +515,53 @@ async function loadScores() {
   document.getElementById('loadBtn').disabled = true;
 
   try {
-    const r = await fetch(`https://api.chunirec.net/2.0/records/showall.json?region=${region}&token=${encodeURIComponent(token)}`);
-    if (!r.ok) {
+    setStatus('spin', 'スコアデータを取得中...');
+    const [recRes, musicRes] = await Promise.all([
+      fetch(`https://api.chunirec.net/2.0/records/showall.json?region=${region}&token=${encodeURIComponent(token)}`),
+      fetch(`https://api.chunirec.net/2.0/music/showall.json?region=${region}&token=${encodeURIComponent(token)}`)
+    ]);
+    if (!recRes.ok) {
       const msgs = { 401: '認証エラー — トークンを確認してください', 403: 'アクセス拒否', 404: 'ユーザーが見つかりません' };
-      throw new Error(msgs[r.status] || `エラー ${r.status}`);
+      throw new Error(msgs[recRes.status] || `エラー ${recRes.status}`);
     }
-    const data = await r.json();
-    records = (data.records || []).filter(Boolean);
+    const recData = await recRes.json();
+    records = (recData.records || []).filter(Boolean);
+
+    // 楽曲メタ情報（バージョン判定用）を構築
+    musicMeta = {};
+    if (musicRes.ok) {
+      const musicData = await musicRes.json();
+      (Array.isArray(musicData) ? musicData : []).forEach(m => {
+        if (m.meta?.id) {
+          const diffMaxcombo = {};
+          if (m.data) {
+            Object.entries(m.data).forEach(([diff, d]) => {
+              if (d?.maxcombo) diffMaxcombo[diff] = d.maxcombo;
+            });
+          }
+          musicMeta[m.meta.id] = {
+            release: m.meta.release,
+            artist: m.meta.artist,
+            bpm: m.meta.bpm,
+            version: getVersion(m.meta.release),
+            maxcombo: diffMaxcombo
+          };
+        }
+      });
+    }
+
+    // レコードにバージョン・ノーツ数情報を付与
+    records.forEach(r => {
+      const m = musicMeta[r.id];
+      r.version = m?.version || null;
+      r.release = m?.release || null;
+      r.artist = m?.artist || null;
+      r.maxcombo = m?.maxcombo?.[r.diff] || null;
+    });
+
     genres = new Set(records.map(r => r.genre).filter(Boolean));
     buildGenreChips();
+    buildVersionChips();
     updatePool();
     setStatus('ok', `${records.length}件のレコードを読み込みました`);
     document.getElementById('filterCard').style.display = 'block';
@@ -506,6 +587,33 @@ function buildGenreChips() {
   });
 }
 
+function buildVersionChips() {
+  const el = document.getElementById('versionFilter');
+  if (!el) return;
+  el.innerHTML = '';
+  // レコードに実際に存在するバージョンのみ表示（VERSIONS順）
+  const present = new Set(records.map(r => r.version).filter(Boolean));
+  VERSIONS.forEach(v => {
+    if (!present.has(v.name)) return;
+    const c = document.createElement('span');
+    c.className = 'chip on';
+    c.dataset.v = v.name;
+    c.textContent = v.name;
+    c.onclick = () => { c.classList.toggle('on'); updatePool(); };
+    el.appendChild(c);
+  });
+  // バージョン不明分
+  const hasUnknown = records.some(r => !r.version);
+  if (hasUnknown) {
+    const c = document.createElement('span');
+    c.className = 'chip on';
+    c.dataset.v = '__unknown__';
+    c.textContent = '不明';
+    c.onclick = () => { c.classList.toggle('on'); updatePool(); };
+    el.appendChild(c);
+  }
+}
+
 function activeVals(id) {
   return [...document.querySelectorAll(`#${id} .chip.on`)].map(c => c.dataset.v);
 }
@@ -515,6 +623,7 @@ function filtered() {
   const achieve = activeVals('achieveFilter');
   const played = activeVals('playedFilter');
   const gList = activeVals('genreFilter');
+  const vList = activeVals('versionFilter');
   const cMin = parseFloat(document.getElementById('constMin').value) || 0;
   const cMax = parseFloat(document.getElementById('constMax').value) || 16;
   const sMin = parseInt(document.getElementById('scoreMin').value) || 0;
@@ -523,6 +632,9 @@ function filtered() {
   return records.filter(r => {
     if (!diffs.includes(r.diff)) return false;
     if (!gList.includes(r.genre)) return false;
+    // バージョンフィルター
+    const rv = r.version || '__unknown__';
+    if (!vList.includes(rv)) return false;
     if (r.const > 0 && (r.const < cMin || r.const > cMax)) return false;
     if (!played.includes('played') && r.is_played) return false;
     if (!played.includes('notplayed') && !r.is_played) return false;
@@ -541,6 +653,13 @@ function filtered() {
 function updatePool() {
   const n = filtered().length;
   document.getElementById('poolInfo').innerHTML = `対象楽曲: <span class="pool-count">${n}件</span>`;
+}
+
+function setAllVersions(on) {
+  document.querySelectorAll('#versionFilter .chip').forEach(c => {
+    c.classList.toggle('on', on);
+  });
+  updatePool();
 }
 
 document.addEventListener('click', e => {
@@ -598,10 +717,36 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+function fmtLv(level) {
+  if (!level || level <= 0) return null;
+  const base = Math.floor(level);
+  const isHalf = Math.abs(level - base - 0.5) < 0.01;
+  return isHalf ? base + '+' : String(base);
+}
+
 function showResult(r) {
   const rk = r.is_played ? rank(r.score) : null;
   let badges = '';
-  if (r.is_alljustice) badges += '<span class="badge b-aj">ALL JUSTICE</span>';
+  // AJ時のJUSTICE数をスコア式から逆算
+  // 素点p = 1000000 / totalNotes
+  // score = p*1.01*JC数 + p*J数  (AJなのでATTACK=0, JC+J=totalNotes)
+  // => score = p*totalNotes + p*0.01*JC数
+  // => JC数 = (score - p*totalNotes) / (p*0.01)
+  // => J数  = totalNotes - JC数
+  let justiceCount = null;
+  if (r.is_alljustice && r.score != null && r.maxcombo > 0) {
+    const total = r.maxcombo;
+    const p = 1000000 / total;
+    const jcCount = Math.round((r.score - p * total) / (p * 0.01));
+    justiceCount = total - jcCount;
+    if (justiceCount < 0) justiceCount = 0;
+  }
+  if (r.is_alljustice) {
+    const jLabel = (justiceCount != null)
+      ? `ALL JUSTICE <span style="font-weight:400;opacity:0.85;">(J${justiceCount})</span>`
+      : 'ALL JUSTICE';
+    badges += `<span class="badge b-aj">${jLabel}</span>`;
+  }
   else if (r.is_fullcombo) badges += '<span class="badge b-fc">FULL COMBO</span>';
   if (r.is_clear) badges += '<span class="badge b-cl">CLEAR</span>';
   if (!r.is_played) badges += '<span class="badge b-no">未プレイ</span>';
@@ -609,10 +754,14 @@ function showResult(r) {
   document.getElementById('resultEl').innerHTML = `
     <span class="diff-badge d-${esc(r.diff)}">${esc(r.diff)}</span>
     <div class="result-title">${esc(r.title)}</div>
-    ${r.genre ? `<span class="genre-pill">${esc(r.genre)}</span>` : ''}
+    ${r.artist ? `<div style="font-size:13px;color:var(--muted);">${esc(r.artist)}</div>` : ''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+      ${r.genre ? `<span class="genre-pill">${esc(r.genre)}</span>` : ''}
+      ${r.version ? `<span class="genre-pill" style="color:#a080ff;border-color:#4030a0;">${esc(r.version)}</span>` : ''}
+    </div>
     <div class="meta">
       ${r.const > 0 ? `<div class="meta-chip">定数 <b>${r.const.toFixed(1)}</b></div>` : ''}
-      ${r.level > 0 ? `<div class="meta-chip">Lv <b>${r.level.toFixed(1)}</b></div>` : ''}
+      ${fmtLv(r.level) ? `<div class="meta-chip">Lv <b>${fmtLv(r.level)}</b></div>` : ''}
       ${r.is_played && r.rating ? `<div class="meta-chip">Rating <b>${r.rating.toFixed(2)}</b></div>` : ''}
     </div>
     ${r.is_played && r.score ? `
