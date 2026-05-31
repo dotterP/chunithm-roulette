@@ -750,12 +750,6 @@ function fmtLv(level) {
 }
 
 function showResult(r) {
-    console.log(
-    'ID=', r.id,
-    'TITLE=', r.title,
-    'DIFF=', r.diff,
-    'NOTES=', r.notesTotal
-  );
   const rk = r.is_played ? rank(r.score) : null;
   let badges = '';
   // AJ時のJUSTICE数をスコア式から逆算
@@ -783,7 +777,7 @@ function showResult(r) {
   if (!r.is_played) badges += '<span class="badge b-no">未プレイ</span>';
 
 
-  // music-ex.jsonから取得できた譜面のみ理論値を表示
+  // music-ex.jsonから取得したノーツ数を表示。取得できない場合も表示枠は出す
   const notesTotal = r.notesTotal || null;
 
   document.getElementById('resultEl').innerHTML = `
@@ -797,7 +791,8 @@ function showResult(r) {
     <div class="meta">
       ${r.const > 0 ? `<div class="meta-chip">定数 <b>${r.const.toFixed(1)}</b></div>` : ''}
       ${fmtLv(r.level) ? `<div class="meta-chip">Lv <b>${fmtLv(r.level)}</b></div>` : ''}
-      ${notesTotal ? `<div class="meta-chip">理論値 <b>1,010,000</b></div>` : ''}
+      <div class="meta-chip">ノーツ数 <b>${notesTotal ? notesTotal.toLocaleString() : '取得失敗'}</b></div>
+      <div class="meta-chip">理論値 <b>1,010,000</b></div>
       ${r.is_played && r.rating ? `<div class="meta-chip">Rating <b>${r.rating.toFixed(2)}</b></div>` : ''}
     </div>
     ${r.is_played && r.score ? `
