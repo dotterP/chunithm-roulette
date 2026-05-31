@@ -750,6 +750,12 @@ function fmtLv(level) {
 }
 
 function showResult(r) {
+    console.log(
+    'ID=', r.id,
+    'TITLE=', r.title,
+    'DIFF=', r.diff,
+    'NOTES=', r.notesTotal
+  );
   const rk = r.is_played ? rank(r.score) : null;
   let badges = '';
   // AJ時のJUSTICE数をスコア式から逆算
