@@ -453,6 +453,7 @@ input[type="number"] { -moz-appearance: textfield; }
 let records = [];
 let genres = new Set();
 let musicMeta = {}; // id -> { release, artist, bpm }
+let notesMap = {};
 
 // CHUNITHMのバージョンとリリース日の対応
 const VERSIONS = [
@@ -516,9 +517,10 @@ async function loadScores() {
 
   try {
     setStatus('spin', 'スコアデータを取得中...');
-    const [recRes, musicRes] = await Promise.all([
+    const [recRes, musicRes, exRes] = await Promise.all([
       fetch(`https://api.chunirec.net/2.0/records/showall.json?region=${region}&token=${encodeURIComponent(token)}`),
-      fetch(`https://api.chunirec.net/2.0/music/showall.json?region=${region}&token=${encodeURIComponent(token)}`)
+      fetch(`https://api.chunirec.net/2.0/music/showall.json?region=${region}&token=${encodeURIComponent(token)}`),
+      fetch('./music-ex.json')
     ]);
     if (!recRes.ok) {
       const msgs = { 401: '認証エラー — トークンを確認してください', 403: 'アクセス拒否', 404: 'ユーザーが見つかりません' };
@@ -536,7 +538,7 @@ async function loadScores() {
           const diffMaxcombo = {};
           if (m.data) {
             Object.entries(m.data).forEach(([diff, d]) => {
-              if (d?.maxcombo) diffMaxcombo[diff] = d.maxcombo;
+              if (d?.maxcombo != null) diffMaxcombo[diff] = d.maxcombo;
             });
           }
           musicMeta[m.meta.id] = {
@@ -550,13 +552,35 @@ async function loadScores() {
       });
     }
 
+    if (exRes.ok) {
+      const exData = await exRes.json();
+      notesMap = {};
+      exData.forEach(song => {
+        notesMap[String(song.id)] = song;
+      });
+    }
+
     // レコードにバージョン・ノーツ数情報を付与
     records.forEach(r => {
       const m = musicMeta[r.id];
       r.version = m?.version || null;
       r.release = m?.release || null;
       r.artist = m?.artist || null;
-      r.maxcombo = m?.maxcombo?.[r.diff] || null;
+      r.maxcombo = m?.maxcombo?.[r.diff] ?? null;
+
+      const noteInfo = notesMap[String(r.id)];
+      const noteKey = {
+        BAS: 'lev_bas_notes',
+        ADV: 'lev_adv_notes',
+        EXP: 'lev_exp_notes',
+        MAS: 'lev_mas_notes',
+        ULT: 'lev_ult_notes'
+      }[r.diff];
+
+      r.notesTotal =
+        noteInfo && noteKey
+          ? Number(noteInfo[noteKey]) || null
+          : null;
     });
 
     genres = new Set(records.map(r => r.genre).filter(Boolean));
@@ -573,6 +597,7 @@ async function loadScores() {
   }
   document.getElementById('loadBtn').disabled = false;
 }
+
 
 function buildGenreChips() {
   const el = document.getElementById('genreFilter');
@@ -751,6 +776,10 @@ function showResult(r) {
   if (r.is_clear) badges += '<span class="badge b-cl">CLEAR</span>';
   if (!r.is_played) badges += '<span class="badge b-no">未プレイ</span>';
 
+
+  // music-ex.jsonから取得できた譜面のみ理論値を表示
+  const notesTotal = r.notesTotal || null;
+
   document.getElementById('resultEl').innerHTML = `
     <span class="diff-badge d-${esc(r.diff)}">${esc(r.diff)}</span>
     <div class="result-title">${esc(r.title)}</div>
@@ -762,6 +791,7 @@ function showResult(r) {
     <div class="meta">
       ${r.const > 0 ? `<div class="meta-chip">定数 <b>${r.const.toFixed(1)}</b></div>` : ''}
       ${fmtLv(r.level) ? `<div class="meta-chip">Lv <b>${fmtLv(r.level)}</b></div>` : ''}
+      ${notesTotal ? `<div class="meta-chip">理論値 <b>1,010,000</b></div>` : ''}
       ${r.is_played && r.rating ? `<div class="meta-chip">Rating <b>${r.rating.toFixed(2)}</b></div>` : ''}
     </div>
     ${r.is_played && r.score ? `
