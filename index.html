@@ -816,7 +816,6 @@ function showResult(r) {
       ${r.const > 0 ? `<div class="meta-chip">定数 <b>${r.const.toFixed(1)}</b></div>` : ''}
       ${fmtLv(r.level) ? `<div class="meta-chip">Lv <b>${fmtLv(r.level)}</b></div>` : ''}
       <div class="meta-chip">ノーツ数 <b>${notesTotal ? notesTotal.toLocaleString() : '取得失敗'}</b></div>
-      <div class="meta-chip">理論値 <b>1,010,000</b></div>
       ${r.is_played && r.rating ? `<div class="meta-chip">Rating <b>${r.rating.toFixed(2)}</b></div>` : ''}
     </div>
     ${r.is_played && r.score ? `
