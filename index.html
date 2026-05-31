@@ -556,7 +556,7 @@ async function loadScores() {
       const exData = await exRes.json();
       notesMap = {};
       exData.forEach(song => {
-        notesMap[String(song.id)] = song;
+        notesMap[String(song.title).trim()] = song;
       });
     }
 
@@ -568,7 +568,7 @@ async function loadScores() {
       r.artist = m?.artist || null;
       r.maxcombo = m?.maxcombo?.[r.diff] ?? null;
 
-      const noteInfo = notesMap[String(r.id)];
+      const noteInfo = notesMap[String(r.title).trim()];
       const noteKey = {
         BAS: 'lev_bas_notes',
         ADV: 'lev_adv_notes',
