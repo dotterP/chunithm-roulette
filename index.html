@@ -783,8 +783,8 @@ function showResult(r) {
   // => JC数 = (score - p*totalNotes) / (p*0.01)
   // => J数  = totalNotes - JC数
   let justiceCount = null;
-  if (r.is_alljustice && r.score != null && r.maxcombo > 0) {
-    const total = r.maxcombo;
+  if (r.is_alljustice && r.score != null && r.NotesTotal > 0) {
+    const total = r.NotesTotal;
     const p = 1000000 / total;
     const jcCount = Math.round((r.score - p * total) / (p * 0.01));
     justiceCount = total - jcCount;
