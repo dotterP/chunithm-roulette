@@ -385,12 +385,7 @@ input[type="number"] { -moz-appearance: textfield; }
       <option value="jp">JP (旧バージョン)</option>
     </select>
   </div>
-
-  <div class="row">
-    <label>ユーザーID</label>
-    <input type="text" id="userId" placeholder="空欄なら自分のデータ" />
-  </div>
-    <p class="hint">
+<p class="hint">
       トークンは <a href="https://developer.chunirec.net/" target="_blank" style="color:var(--cyan);">developer.chunirec.net</a> で発行できます
     </p>
   </details>
@@ -419,14 +414,7 @@ input[type="number"] { -moz-appearance: textfield; }
         <span class="chip on" data-v="ULT">ULT</span>
       </div>
     </div>
-    <div>
-      <span class="filter-label">プレイ状態</span>
-      <div class="chips" id="playedFilter">
-        <span class="chip on" data-v="played">プレイ済み</span>
-        <span class="chip on" data-v="notplayed">未プレイ</span>
-      </div>
     </div>
-  </div>
 
   <div class="filter-grid">
     <div>
@@ -454,6 +442,17 @@ input[type="number"] { -moz-appearance: textfield; }
       <span class="chip" data-v="notaj">未AJ</span>
       <span class="chip" data-v="notfc">未FC</span>
       <span class="chip" data-v="notclear">未クリア</span>
+    </div>
+  </div>
+  <div style="margin-bottom:12px;">
+    <span class="filter-label">クリアランプ</span>
+    <div class="chips" id="lampFilter">
+      <span class="chip on" data-v="any">すべて</span>
+      <span class="chip" data-v="clear">CLEAR</span>
+      <span class="chip" data-v="hard">HARD</span>
+      <span class="chip" data-v="brave">BRAVE</span>
+      <span class="chip" data-v="absolute">ABSOLUTE</span>
+      <span class="chip" data-v="catastrophe">CATASTROPHY</span>
     </div>
   </div>
 
@@ -562,8 +561,7 @@ function normalizeTitleForNotes(title) {
 async function loadScores() {
   const token = document.getElementById('token').value.trim();
   const region = document.getElementById('region').value;
-  const userId = document.getElementById('userId')?.value.trim() || '';
-  const userParam = userId ? `&user_id=${encodeURIComponent(userId)}` : '';
+  const userParam = '';
   if (!token) { setStatus('err', 'トークンを入力してください'); return; }
 
   setStatus('spin', '読み込み中...');
@@ -647,7 +645,7 @@ async function loadScores() {
     buildGenreChips();
     buildVersionChips();
     updatePool();
-    setStatus('ok', `${records.length}件のレコードを読み込みました${userId ? `（ユーザーID: ${userId}）` : ''}`);
+    setStatus('ok', `${records.length}件のレコードを読み込みました`);
     document.getElementById('filterCard').style.display = 'block';
     document.getElementById('spinArea').style.display = 'block';
     document.getElementById('poolInfo').style.display = 'block';
@@ -703,10 +701,37 @@ function activeVals(id) {
   return [...document.querySelectorAll(`#${id} .chip.on`)].map(c => c.dataset.v);
 }
 
+
+function getClearLamp(r) {
+  const candidates = [
+    r.clear_lamp,
+    r.clearLamp,
+    r.lamp,
+    r.clear_status,
+    r.clearStatus,
+    r.clear_type,
+    r.clearType,
+    r.option
+  ];
+
+  const raw = candidates.find(v => v != null && String(v).trim() !== '');
+  if (!raw) return null;
+
+  const s = String(raw).trim().toLowerCase().replace(/[\s_-]/g, '');
+
+  if (s.includes('catastrophe')) return 'catastrophe';
+  if (s.includes('absolute')) return 'absolute';
+  if (s.includes('brave')) return 'brave';
+  if (s.includes('hard')) return 'hard';
+  if (s.includes('clear')) return 'clear';
+
+  return null;
+}
+
 function filtered() {
   const diffs = activeVals('diffFilter');
   const achieve = activeVals('achieveFilter');
-  const played = activeVals('playedFilter');
+  const lamps = activeVals('lampFilter');
   const gList = activeVals('genreFilter');
   const vList = activeVals('versionFilter');
   const cMin = parseFloat(document.getElementById('constMin').value) || 0;
@@ -721,10 +746,12 @@ function filtered() {
     const rv = r.version || '__unknown__';
     if (!vList.includes(rv)) return false;
     if (r.const > 0 && (r.const < cMin || r.const > cMax)) return false;
-    if (!played.includes('played') && r.is_played) return false;
-    if (!played.includes('notplayed') && !r.is_played) return false;
     if (r.is_played) {
       if (r.score < sMin || r.score > sMax) return false;
+    }
+    if (!lamps.includes('any')) {
+      const clearLamp = getClearLamp(r);
+      if (!lamps.includes(clearLamp)) return false;
     }
     if (!achieve.includes('any')) {
       if (achieve.includes('notaj') && r.is_alljustice) return false;
@@ -751,7 +778,7 @@ document.addEventListener('click', e => {
   const chip = e.target.closest('.chip');
   if (!chip) return;
   const pid = chip.closest('[id]')?.id;
-  if (pid === 'diffFilter' || pid === 'playedFilter') {
+  if (pid === 'diffFilter') {
     chip.classList.toggle('on');
     updatePool();
   }
@@ -764,6 +791,20 @@ document.addEventListener('click', e => {
       chip.classList.toggle('on');
       if (!document.querySelector('#achieveFilter .chip.on')) {
         document.querySelector('#achieveFilter [data-v="any"]').classList.add('on');
+      }
+    }
+    updatePool();
+  }
+
+  if (pid === 'lampFilter') {
+    if (chip.dataset.v === 'any') {
+      document.querySelectorAll('#lampFilter .chip').forEach(c => c.classList.remove('on'));
+      chip.classList.add('on');
+    } else {
+      document.querySelector('#lampFilter [data-v="any"]').classList.remove('on');
+      chip.classList.toggle('on');
+      if (!document.querySelector('#lampFilter .chip.on')) {
+        document.querySelector('#lampFilter [data-v="any"]').classList.add('on');
       }
     }
     updatePool();
@@ -837,6 +878,17 @@ if (r.is_alljustice && r.score != null && r.notesTotal) {
 
   justiceCount = total - jcCount;
 }
+  const clearLamp = getClearLamp(r);
+  const clearLampLabel = {
+    clear: 'CLEAR',
+    hard: 'HARD',
+    brave: 'BRAVE',
+    absolute: 'ABSOLUTE',
+    catastrophe: 'CATASTROPHY'
+  }[clearLamp];
+
+  if (clearLampLabel) badges += `<span class="badge b-cl">${clearLampLabel}</span>`;
+
   if (r.is_alljustice) {
     const jLabel = (justiceCount != null)
       ? `ALL JUSTICE <span style="font-weight:400;opacity:0.85;">(J${justiceCount})</span>`
@@ -844,7 +896,7 @@ if (r.is_alljustice && r.score != null && r.notesTotal) {
     badges += `<span class="badge b-aj">${jLabel}</span>`;
   }
   else if (r.is_fullcombo) badges += '<span class="badge b-fc">FULL COMBO</span>';
-  if (r.is_clear) badges += '<span class="badge b-cl">CLEAR</span>';
+  else if (r.is_clear && !clearLampLabel) badges += '<span class="badge b-cl">CLEAR</span>';
   if (!r.is_played) badges += '<span class="badge b-no">未プレイ</span>';
 
 
@@ -880,11 +932,9 @@ if (r.is_alljustice && r.score != null && r.notesTotal) {
 document.addEventListener('DOMContentLoaded', () => {
   const tokenEl = document.getElementById('token');
   const regionEl = document.getElementById('region');
-  const userIdEl = document.getElementById('userId');
 
   tokenEl.value = localStorage.getItem('chunirec_token') || '';
   regionEl.value = localStorage.getItem('chunirec_region') || 'jp2';
-  if (userIdEl) userIdEl.value = localStorage.getItem('chunirec_user_id') || '';
 
   const apiSettings = document.getElementById('apiSettings');
   if (apiSettings) {
@@ -899,12 +949,6 @@ document.addEventListener('DOMContentLoaded', () => {
   regionEl.addEventListener('change', () => {
     localStorage.setItem('chunirec_region', regionEl.value);
   });
-
-  if (userIdEl) {
-    userIdEl.addEventListener('input', () => {
-      localStorage.setItem('chunirec_user_id', userIdEl.value);
-    });
-  }
 });
 </script>
 
