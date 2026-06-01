@@ -703,27 +703,34 @@ function activeVals(id) {
 
 
 function getClearLamp(r) {
-  const candidates = [
-    r.clear_lamp,
-    r.clearLamp,
-    r.lamp,
-    r.clear_status,
-    r.clearStatus,
-    r.clear_type,
-    r.clearType,
-    r.option
-  ];
+  // chunirec側のキー名差異に対応するため、まずレコード全体から候補を探す
+  const keys = Object.keys(r || {});
 
-  const raw = candidates.find(v => v != null && String(v).trim() !== '');
-  if (!raw) return null;
+  // 代表的なランプ系フィールド名を優先
+  const preferredKeys = keys.filter(k =>
+    /lamp|clear.*type|clear.*status|clear.*level|clear.*lamp|play.*option|option|gauge/i.test(k)
+  );
 
-  const s = String(raw).trim().toLowerCase().replace(/[\s_-]/g, '');
+  // 念のため全キーも確認対象に含める
+  const values = [...preferredKeys, ...keys]
+    .map(k => r[k])
+    .filter(v => v != null && String(v).trim() !== '');
 
-  if (s.includes('catastrophe')) return 'catastrophe';
-  if (s.includes('absolute')) return 'absolute';
-  if (s.includes('brave')) return 'brave';
-  if (s.includes('hard')) return 'hard';
-  if (s.includes('clear')) return 'clear';
+  for (const v of values) {
+    const s = String(v).trim().toLowerCase().replace(/[\s_-]/g, '');
+
+    if (s.includes('catastrophe')) return 'catastrophe';
+    if (s.includes('absolute')) return 'absolute';
+    if (s.includes('brave')) return 'brave';
+    if (s.includes('hard')) return 'hard';
+
+    // 単なる true / 1 などで clear と誤判定しないよう、文字列CLEARのみ対象
+    if (s === 'clear' || s.includes('clear')) return 'clear';
+  }
+
+  // ランプ種別がAPIから取得できない場合のフォールバック
+  // 通常クリア扱いだけは r.is_clear から判定可能
+  if (r && r.is_clear) return 'clear';
 
   return null;
 }
@@ -764,6 +771,19 @@ function filtered() {
 
 function updatePool() {
   const n = filtered().length;
+  const lamps = document.getElementById('lampFilter') ? activeVals('lampFilter') : ['any'];
+
+  if (!lamps.includes('any')) {
+    const lampCounts = { clear: 0, hard: 0, brave: 0, absolute: 0, catastrophe: 0, unknown: 0 };
+    records.forEach(r => {
+      const lamp = getClearLamp(r);
+      if (lampCounts[lamp] != null) lampCounts[lamp]++;
+      else lampCounts.unknown++;
+    });
+    console.log('clear lamp counts:', lampCounts);
+    console.log('sample record for lamp debug:', records[0]);
+  }
+
   document.getElementById('poolInfo').innerHTML = `対象楽曲: <span class="pool-count">${n}件</span>`;
 }
 
