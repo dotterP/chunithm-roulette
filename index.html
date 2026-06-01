@@ -690,9 +690,6 @@ function activeVals(id) {
   return [...document.querySelectorAll(`#${id} .chip.on`)].map(c => c.dataset.v);
 }
 
-
-
-
 function filtered() {
   const diffs = activeVals('diffFilter');
   const achieve = activeVals('achieveFilter');
@@ -751,14 +748,6 @@ document.addEventListener('click', e => {
       chip.classList.toggle('on');
       if (!document.querySelector('#achieveFilter .chip.on')) {
         document.querySelector('#achieveFilter [data-v="any"]').classList.add('on');
-      }
-    }
-    updatePool();
-  } else {
-      document.querySelector('#lampFilter [data-v="any"]').classList.remove('on');
-      chip.classList.toggle('on');
-      if (!document.querySelector('#lampFilter .chip.on')) {
-        document.querySelector('#lampFilter [data-v="any"]').classList.add('on');
       }
     }
     updatePool();
@@ -832,17 +821,6 @@ if (r.is_alljustice && r.score != null && r.notesTotal) {
 
   justiceCount = total - jcCount;
 }
-  const clearLamp = getClearLamp(r);
-  const clearLampLabel = {
-    clear: 'CLEAR',
-    hard: 'HARD',
-    brave: 'BRAVE',
-    absolute: 'ABSOLUTE',
-    catastrophe: 'CATASTROPHY'
-  }[clearLamp];
-
-  if (clearLampLabel) badges += `<span class="badge b-cl">${clearLampLabel}</span>`;
-
   if (r.is_alljustice) {
     const jLabel = (justiceCount != null)
       ? `ALL JUSTICE <span style="font-weight:400;opacity:0.85;">(J${justiceCount})</span>`
@@ -850,7 +828,7 @@ if (r.is_alljustice && r.score != null && r.notesTotal) {
     badges += `<span class="badge b-aj">${jLabel}</span>`;
   }
   else if (r.is_fullcombo) badges += '<span class="badge b-fc">FULL COMBO</span>';
-  else if (r.is_clear && !clearLampLabel) badges += '<span class="badge b-cl">CLEAR</span>';
+  if (r.is_clear) badges += '<span class="badge b-cl">CLEAR</span>';
   if (!r.is_played) badges += '<span class="badge b-no">未プレイ</span>';
 
 
