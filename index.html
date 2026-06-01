@@ -271,6 +271,37 @@ input[type="number"] { -moz-appearance: textfield; }
 .b-cl { background: #00E676; color: #001A00; }
 .b-no { background: #FF5252; color: #fff; }
 
+.multi-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+.multi-result-card {
+  background: #0D0D1A;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.multi-result-card .result-title {
+  font-size: 18px;
+}
+.spin-options {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.spin-options label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.spin-options input {
+  max-width: 120px;
+}
+
 .pool-info { text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 14px; }
 .pool-count { color: var(--cyan); font-weight: 600; }
 
@@ -476,6 +507,10 @@ input[type="number"] { -moz-appearance: textfield; }
 </div>
 
 <div id="spinArea" style="display:none;">
+  <div class="spin-options">
+    <label for="spinCount">抽選回数</label>
+    <input type="number" id="spinCount" value="1" min="1" max="50" step="1" />
+  </div>
   <button class="btn-main" id="spinBtn" onclick="spin()" style="font-size:22px;padding:18px;letter-spacing:4px;">🎯 SPIN!</button>
 </div>
 
@@ -761,6 +796,11 @@ function spin() {
   const pool = filtered();
   if (!pool.length) { setStatus('err', '対象曲がありません。条件を緩めてください'); return; }
 
+  const countInput = document.getElementById('spinCount');
+  let count = parseInt(countInput?.value, 10) || 1;
+  count = Math.max(1, Math.min(count, pool.length, 50));
+  if (countInput) countInput.value = count;
+
   document.getElementById('phld').style.display = 'none';
   document.getElementById('resultEl').style.display = 'none';
   const rolling = document.getElementById('rollingEl');
@@ -773,9 +813,15 @@ function spin() {
     document.getElementById('rollingTitle').textContent = pool[Math.floor(Math.random()*pool.length)].title;
     if (++t >= max) {
       clearInterval(iv);
-      const picked = pool[Math.floor(Math.random()*pool.length)];
+      const pickedList = shuffleArray(pool).slice(0, count);
       rolling.style.display = 'none';
-      showResult(picked);
+
+      if (count === 1) {
+        showResult(pickedList[0]);
+      } else {
+        showResults(pickedList);
+      }
+
       document.getElementById('spinBtn').disabled = false;
     }
   }, 70);
@@ -792,34 +838,27 @@ function fmtLv(level) {
   return isHalf ? base + '+' : String(base);
 }
 
-function showResult(r) {
-  console.log(
-    'ID=', r.id,
-    'TITLE=', r.title,
-    'NORMALIZED_TITLE=', normalizeTitleForNotes(r.title),
-    'DIFF=', r.diff,
-    'NOTES=', r.notesTotal,
-    'NOTES_MAP_HIT=', !!(notesMap[String(r.title || '').trim()] || notesMap[normalizeTitleForNotes(r.title)])
-  );
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildResultHtml(r, index) {
   const rk = r.is_played ? rank(r.score) : null;
   let badges = '';
-  // AJ時のJUSTICE数をスコア式から逆算
-  // 素点p = 1000000 / totalNotes
-  // score = p*1.01*JC数 + p*J数  (AJなのでATTACK=0, JC+J=totalNotes)
-  // => score = p*totalNotes + p*0.01*JC数
-  // => JC数 = (score - p*totalNotes) / (p*0.01)
-  // => J数  = totalNotes - JC数
+
   let justiceCount = null;
-if (r.is_alljustice && r.score != null && r.notesTotal) {
-  const total = r.notesTotal;
+  if (r.is_alljustice && r.score != null && r.notesTotal) {
+    const total = r.notesTotal;
+    const p = 1000000 / total;
+    const jcCount = Math.round((r.score - p * total) / (p * 0.01));
+    justiceCount = total - jcCount;
+  }
 
-  const p = 1000000 / total;
-  const jcCount = Math.round(
-    (r.score - p * total) / (p * 0.01)
-  );
-
-  justiceCount = total - jcCount;
-}
   if (r.is_alljustice) {
     const jLabel = (justiceCount != null)
       ? `ALL JUSTICE <span style="font-weight:400;opacity:0.85;">(J${justiceCount})</span>`
@@ -830,11 +869,10 @@ if (r.is_alljustice && r.score != null && r.notesTotal) {
   if (r.is_clear) badges += '<span class="badge b-cl">CLEAR</span>';
   if (!r.is_played) badges += '<span class="badge b-no">未プレイ</span>';
 
-
-  // music-ex.jsonから取得できた譜面のみ理論値を表示
   const notesTotal = r.notesTotal || null;
 
-  document.getElementById('resultEl').innerHTML = `
+  return `
+    ${index ? `<div style="font-family:'Rajdhani',sans-serif;color:var(--cyan);font-weight:700;letter-spacing:1px;">#${index}</div>` : ''}
     <span class="diff-badge d-${esc(r.diff)}">${esc(r.diff)}</span>
     <div class="result-title">${esc(r.title)}</div>
     ${r.artist ? `<div style="font-size:13px;color:var(--muted);">${esc(r.artist)}</div>` : ''}
@@ -855,6 +893,30 @@ if (r.is_alljustice && r.score != null && r.notesTotal) {
       </div>` : ''}
     ${badges ? `<div class="badges">${badges}</div>` : ''}
   `;
+}
+
+function showResults(list) {
+  console.log('PICKED_LIST=', list.map(r => ({ id: r.id, title: r.title, diff: r.diff })));
+  document.getElementById('resultEl').innerHTML = `
+    <div class="multi-results">
+      ${list.map((r, i) => `<div class="multi-result-card">${buildResultHtml(r, i + 1)}</div>`).join('')}
+    </div>
+  `;
+  document.getElementById('resultEl').style.display = 'flex';
+}
+
+
+function showResult(r) {
+  console.log(
+    'ID=', r.id,
+    'TITLE=', r.title,
+    'NORMALIZED_TITLE=', normalizeTitleForNotes(r.title),
+    'DIFF=', r.diff,
+    'NOTES=', r.notesTotal,
+    'NOTES_MAP_HIT=', !!(notesMap[String(r.title || '').trim()] || notesMap[normalizeTitleForNotes(r.title)])
+  );
+
+  document.getElementById('resultEl').innerHTML = buildResultHtml(r);
   document.getElementById('resultEl').style.display = 'flex';
 }
 </script>
