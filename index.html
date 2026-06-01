@@ -441,7 +441,7 @@ input[type="number"] { -moz-appearance: textfield; }
       <span class="chip on" data-v="any">すべて</span>
       <span class="chip" data-v="notaj">未AJ</span>
       <span class="chip" data-v="notfc">未FC</span>
-      <span class="chip" data-v="notclear">未クリア</span>
+      
     </div>
   </div>
 
@@ -713,7 +713,6 @@ function filtered() {
     if (!achieve.includes('any')) {
       if (achieve.includes('notaj') && r.is_alljustice) return false;
       if (achieve.includes('notfc') && (r.is_fullcombo || r.is_alljustice)) return false;
-      if (achieve.includes('notclear') && r.is_clear) return false;
     }
     return true;
   });
