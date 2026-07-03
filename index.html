@@ -246,8 +246,8 @@ input[type="number"] { -moz-appearance: textfield; }
 .score-line { 
   display: flex; 
   align-items: center; 
-  gap: 14px;
-  justify-content: center;  
+  gap: 14px; 
+  justify-content: center;
 }
 .score-num {
   font-family: 'Rajdhani', sans-serif;
@@ -341,61 +341,6 @@ input[type="number"] { -moz-appearance: textfield; }
   margin-top: 8px;
   text-align: center;
 }
-
-
-/* Mobile enhancement */
-@media (max-width: 768px) {
-  body {
-    padding: 12px;
-    max-width: 100%;
-  }
-  .header h1 {
-    font-size: 26px;
-    letter-spacing: 2px;
-  }
-  .card {
-    padding: 14px;
-    border-radius: 14px;
-  }
-  .row {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-  .row label {
-    min-width: auto;
-    font-size: 13px;
-  }
-  input, select {
-    font-size: 16px;
-  }
-  .filter-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .chip {
-    padding: 8px 12px;
-    font-size: 13px;
-  }
-  .result-title {
-    font-size: 26px;
-    line-height: 1.4;
-  }
-  .score-num {
-    font-size: 36px;
-  }
-  .btn-main {
-    min-height: 56px;
-  }
-  #spinBtn {
-    min-height: 72px !important;
-    font-size: 28px !important;
-  }
-  .meta {
-    gap: 6px;
-  }
-}
-
 </style>
 </head>
 <body>
@@ -451,7 +396,7 @@ input[type="number"] { -moz-appearance: textfield; }
         <span class="chip on" data-v="ULT">ULT</span>
       </div>
     </div>
-    </div>
+  </div>
 
   <div class="filter-grid">
     <div>
@@ -478,7 +423,6 @@ input[type="number"] { -moz-appearance: textfield; }
       <span class="chip on" data-v="any">すべて</span>
       <span class="chip" data-v="notaj">未AJ</span>
       <span class="chip" data-v="notfc">未FC</span>
-      
     </div>
   </div>
 
@@ -523,7 +467,7 @@ input[type="number"] { -moz-appearance: textfield; }
 <script>
 let records = [];
 let genres = new Set();
-let musicMeta = {}; // id -> { release, artist, bpm }
+let musicMeta = {}; 
 let notesMap = {};
 
 // CHUNITHMのバージョンとリリース日の対応
@@ -579,7 +523,6 @@ function rank(score) {
   return { label: 'B〜', color: '#666' };
 }
 
-
 function normalizeTitleForNotes(title) {
   return String(title || '')
     .normalize('NFKC')
@@ -589,10 +532,37 @@ function normalizeTitleForNotes(title) {
     .replace(/[\[\]［］【】()（）]/g, '');
 }
 
+// 強化版ノーツ情報検索
+function findNoteInfo(title, notesMap) {
+  const original = String(title || '').trim();
+  const normalized = normalizeTitleForNotes(original);
+  
+  if (notesMap[original]) return notesMap[original];
+  if (notesMap[normalized]) return notesMap[normalized];
+
+  for (const [key, song] of Object.entries(notesMap)) {
+    const nKey = normalizeTitleForNotes(key);
+    if (nKey.includes(normalized) || normalized.includes(nKey)) {
+      console.log(`部分一致: "${original}" → "${key}"`);
+      return song;
+    }
+  }
+
+  for (const [key, song] of Object.entries(notesMap)) {
+    const nKey = normalizeTitleForNotes(key);
+    if (nKey.startsWith(normalized) || normalized.startsWith(nKey)) {
+      console.log(`緩い一致: "${original}" → "${key}"`);
+      return song;
+    }
+  }
+
+  console.warn(`ノーツ情報未発見: ${original}`);
+  return null;
+}
+
 async function loadScores() {
   const token = document.getElementById('token').value.trim();
   const region = document.getElementById('region').value;
-  const userParam = '';
   if (!token) { setStatus('err', 'トークンを入力してください'); return; }
 
   setStatus('spin', '読み込み中...');
@@ -601,18 +571,16 @@ async function loadScores() {
   try {
     setStatus('spin', 'スコアデータを取得中...');
     const [recRes, musicRes, exRes] = await Promise.all([
-      fetch(`https://api.chunirec.net/2.0/records/showall.json?region=${region}${userParam}&token=${encodeURIComponent(token)}`),
+      fetch(`https://api.chunirec.net/2.0/records/showall.json?region=${region}&token=${encodeURIComponent(token)}`),
       fetch(`https://api.chunirec.net/2.0/music/showall.json?region=${region}&token=${encodeURIComponent(token)}`),
       fetch('./music-ex.json')
     ]);
-    if (!recRes.ok) {
-      const msgs = { 401: '認証エラー — トークンを確認してください', 403: 'アクセス拒否', 404: 'ユーザーが見つかりません' };
-      throw new Error(msgs[recRes.status] || `エラー ${recRes.status}`);
-    }
+
+    if (!recRes.ok) throw new Error('認証エラーまたはデータ取得失敗');
+
     const recData = await recRes.json();
     records = (recData.records || []).filter(Boolean);
 
-    // 楽曲メタ情報（バージョン判定用）を構築
     musicMeta = {};
     if (musicRes.ok) {
       const musicData = await musicRes.json();
@@ -644,36 +612,17 @@ async function loadScores() {
         if (titleKey) notesMap[titleKey] = song;
         if (normalizedKey) notesMap[normalizedKey] = song;
       });
-      console.log('music-ex loaded:', exData.length, 'notesMap keys:', Object.keys(notesMap).length);
+      console.log('music-ex loaded:', exData.length, 'keys:', Object.keys(notesMap).length);
     }
 
-    // レコードにバージョン・ノーツ数情報を付与
-records.forEach(r => {
+    records.forEach(r => {
       const m = musicMeta[r.id];
       r.version = m?.version || null;
       r.release = m?.release || null;
       r.artist = m?.artist || null;
       r.maxcombo = m?.maxcombo?.[r.diff] ?? null;
 
-      // === 強化版ノーツマッチング ===
-      const title = String(r.title || '').trim();
-      const normalized = normalizeTitleForNotes(title);
-      
-      let noteInfo = notesMap[title] || 
-                    notesMap[normalized];
-
-      // より寛容なマッチング（部分一致）
-      if (!noteInfo) {
-        for (const [key, song] of Object.entries(notesMap)) {
-          const nKey = normalizeTitleForNotes(key);
-          if (nKey.includes(normalized) || normalized.includes(nKey)) {
-            noteInfo = song;
-            console.log(`部分一致: ${title} → ${key}`);
-            break;
-          }
-        }
-      }
-
+      const noteInfo = findNoteInfo(r.title, notesMap);
       const noteKey = {
         BAS: 'lev_bas_notes',
         ADV: 'lev_adv_notes',
@@ -682,10 +631,7 @@ records.forEach(r => {
         ULT: 'lev_ult_notes'
       }[r.diff];
 
-      r.notesTotal =
-        noteInfo && noteKey
-          ? Number(noteInfo[noteKey]) || null
-          : null;
+      r.notesTotal = noteInfo && noteKey ? Number(noteInfo[noteKey]) || null : null;
     });
 
     genres = new Set(records.map(r => r.genre).filter(Boolean));
@@ -699,10 +645,10 @@ records.forEach(r => {
     document.getElementById('phld').innerHTML = '<span class="big">🎯</span>SPINボタンで曲を選ぼう！';
   } catch(e) {
     setStatus('err', e.message);
+    console.error(e);
   }
   document.getElementById('loadBtn').disabled = false;
 }
-
 
 function buildGenreChips() {
   const el = document.getElementById('genreFilter');
@@ -721,7 +667,6 @@ function buildVersionChips() {
   const el = document.getElementById('versionFilter');
   if (!el) return;
   el.innerHTML = '';
-  // レコードに実際に存在するバージョンのみ表示（VERSIONS順）
   const present = new Set(records.map(r => r.version).filter(Boolean));
   VERSIONS.forEach(v => {
     if (!present.has(v.name)) return;
@@ -732,7 +677,6 @@ function buildVersionChips() {
     c.onclick = () => { c.classList.toggle('on'); updatePool(); };
     el.appendChild(c);
   });
-  // バージョン不明分
   const hasUnknown = records.some(r => !r.version);
   if (hasUnknown) {
     const c = document.createElement('span');
@@ -761,7 +705,6 @@ function filtered() {
   return records.filter(r => {
     if (!diffs.includes(r.diff)) return false;
     if (!gList.includes(r.genre)) return false;
-    // バージョンフィルター
     const rv = r.version || '__unknown__';
     if (!vList.includes(rv)) return false;
     if (r.const > 0 && (r.const < cMin || r.const > cMax)) return false;
@@ -919,7 +862,6 @@ function buildResultHtml(r, index) {
 }
 
 function showResults(list) {
-  console.log('PICKED_LIST=', list.map(r => ({ id: r.id, title: r.title, diff: r.diff })));
   document.getElementById('resultEl').innerHTML = `
     <div class="multi-results">
       ${list.map((r, i) => `<div class="multi-result-card">${buildResultHtml(r, i + 1)}</div>`).join('')}
@@ -928,17 +870,7 @@ function showResults(list) {
   document.getElementById('resultEl').style.display = 'flex';
 }
 
-
 function showResult(r) {
-  console.log(
-    'ID=', r.id,
-    'TITLE=', r.title,
-    'NORMALIZED_TITLE=', normalizeTitleForNotes(r.title),
-    'DIFF=', r.diff,
-    'NOTES=', r.notesTotal,
-    'NOTES_MAP_HIT=', !!(notesMap[String(r.title || '').trim()] || notesMap[normalizeTitleForNotes(r.title)])
-  );
-
   document.getElementById('resultEl').innerHTML = buildResultHtml(r);
   document.getElementById('resultEl').style.display = 'flex';
 }
@@ -952,12 +884,6 @@ document.addEventListener('DOMContentLoaded', () => {
   tokenEl.value = localStorage.getItem('chunirec_token') || '';
   regionEl.value = localStorage.getItem('chunirec_region') || 'jp2';
 
-  const apiSettings = document.getElementById('apiSettings');
-  if (apiSettings) {
-    if (tokenEl.value) apiSettings.removeAttribute('open');
-    else apiSettings.setAttribute('open', '');
-  }
-
   tokenEl.addEventListener('input', () => {
     localStorage.setItem('chunirec_token', tokenEl.value);
   });
@@ -967,41 +893,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 </script>
-
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const tokenEl = document.getElementById('token');
-
-  const saved = localStorage.getItem('chunirec_token');
-  if (saved) tokenEl.value = saved;
-
-  tokenEl.addEventListener('input', () => {
-    localStorage.setItem('chunirec_token', tokenEl.value);
-  });
-
-  const clearBtn = document.createElement('button');
-  clearBtn.className = 'btn-sub';
-  clearBtn.textContent = '保存済みトークンを削除';
-  clearBtn.style.marginTop = '8px';
-
-  clearBtn.onclick = () => {
-    localStorage.removeItem('chunirec_token');
-    tokenEl.value = '';
-    document.getElementById('apiSettings')?.setAttribute('open', '');
-    alert('保存済みトークンを削除しました');
-  };
-
-  (document.getElementById('apiSettings') || document.getElementById('apiCard')).appendChild(clearBtn);
-
-  window.addEventListener('beforeunload', () => {
-    if (tokenEl.value.length > 200) {
-      localStorage.removeItem('chunirec_token');
-    }
-  });
-});
-</script>
-
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -1014,7 +905,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Auto load if token exists
   const saved = localStorage.getItem('chunirec_token');
   if (saved && typeof loadScores === 'function') {
     setTimeout(() => {
@@ -1022,18 +912,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 500);
   }
 });
-
-// Improve auth error message
-const _origLoadScores = window.loadScores;
-if (_origLoadScores) {
-  window.loadScores = async function() {
-    try {
-      return await _origLoadScores();
-    } catch(e) {
-      throw e;
-    }
-  }
-}
 </script>
 
 </body>
