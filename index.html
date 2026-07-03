@@ -648,16 +648,32 @@ async function loadScores() {
     }
 
     // レコードにバージョン・ノーツ数情報を付与
-    records.forEach(r => {
+records.forEach(r => {
       const m = musicMeta[r.id];
       r.version = m?.version || null;
       r.release = m?.release || null;
       r.artist = m?.artist || null;
       r.maxcombo = m?.maxcombo?.[r.diff] ?? null;
 
-      const noteInfo =
-        notesMap[String(r.title || '').trim()] ||
-        notesMap[normalizeTitleForNotes(r.title)];
+      // === 強化版ノーツマッチング ===
+      const title = String(r.title || '').trim();
+      const normalized = normalizeTitleForNotes(title);
+      
+      let noteInfo = notesMap[title] || 
+                    notesMap[normalized];
+
+      // より寛容なマッチング（部分一致）
+      if (!noteInfo) {
+        for (const [key, song] of Object.entries(notesMap)) {
+          const nKey = normalizeTitleForNotes(key);
+          if (nKey.includes(normalized) || normalized.includes(nKey)) {
+            noteInfo = song;
+            console.log(`部分一致: ${title} → ${key}`);
+            break;
+          }
+        }
+      }
+
       const noteKey = {
         BAS: 'lev_bas_notes',
         ADV: 'lev_adv_notes',
