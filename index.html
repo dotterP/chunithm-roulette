@@ -723,12 +723,37 @@ document.addEventListener('click', e => {
   document.getElementById(id).addEventListener('input', updatePool)
 );
 
-function spin() { /* 前回と同じ */ 
+function spin() {
   const pool = filtered();
-  if (!pool.length) return setStatus('err', '対象曲がありません');
-  const count = Math.min(parseInt(document.getElementById('spinCount').value) || 1, pool.length, 50);
-  // ... (省略せず完全なspin関数を入れる)
-  // ここでは文字数の都合上省略していますが、必要なら「spin関数だけ」と指定してください。
+  if (!pool.length) {
+    setStatus('err', '対象曲がありません。条件を緩めてください');
+    return;
+  }
+
+  let count = parseInt(document.getElementById('spinCount').value) || 1;
+  count = Math.max(1, Math.min(count, pool.length, 50));
+
+  document.getElementById('phld').style.display = 'none';
+  document.getElementById('resultEl').style.display = 'none';
+  const rolling = document.getElementById('rollingEl');
+  rolling.style.display = 'flex';
+  document.getElementById('spinBtn').disabled = true;
+
+  let t = 0;
+  const max = 20 + Math.floor(Math.random() * 15);
+  const iv = setInterval(() => {
+    document.getElementById('rollingTitle').textContent = pool[Math.floor(Math.random() * pool.length)].title;
+    if (++t >= max) {
+      clearInterval(iv);
+      const picked = shuffleArray(pool).slice(0, count);
+      rolling.style.display = 'none';
+
+      if (count === 1) showResult(picked[0]);
+      else showResults(picked);
+
+      document.getElementById('spinBtn').disabled = false;
+    }
+  }, 60);
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
