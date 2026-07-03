@@ -246,8 +246,8 @@ input[type="number"] { -moz-appearance: textfield; }
 .score-line { 
   display: flex; 
   align-items: center; 
-  gap: 14px; 
-  justify-content: center;
+  gap: 14px;
+  justify-content: center;  
 }
 .score-num {
   font-family: 'Rajdhani', sans-serif;
@@ -341,6 +341,61 @@ input[type="number"] { -moz-appearance: textfield; }
   margin-top: 8px;
   text-align: center;
 }
+
+
+/* Mobile enhancement */
+@media (max-width: 768px) {
+  body {
+    padding: 12px;
+    max-width: 100%;
+  }
+  .header h1 {
+    font-size: 26px;
+    letter-spacing: 2px;
+  }
+  .card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .row label {
+    min-width: auto;
+    font-size: 13px;
+  }
+  input, select {
+    font-size: 16px;
+  }
+  .filter-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .chip {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .result-title {
+    font-size: 26px;
+    line-height: 1.4;
+  }
+  .score-num {
+    font-size: 36px;
+  }
+  .btn-main {
+    min-height: 56px;
+  }
+  #spinBtn {
+    min-height: 72px !important;
+    font-size: 28px !important;
+  }
+  .meta {
+    gap: 6px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -396,7 +451,7 @@ input[type="number"] { -moz-appearance: textfield; }
         <span class="chip on" data-v="ULT">ULT</span>
       </div>
     </div>
-  </div>
+    </div>
 
   <div class="filter-grid">
     <div>
@@ -423,6 +478,7 @@ input[type="number"] { -moz-appearance: textfield; }
       <span class="chip on" data-v="any">すべて</span>
       <span class="chip" data-v="notaj">未AJ</span>
       <span class="chip" data-v="notfc">未FC</span>
+      
     </div>
   </div>
 
@@ -467,32 +523,33 @@ input[type="number"] { -moz-appearance: textfield; }
 <script>
 let records = [];
 let genres = new Set();
-let musicMeta = {}; 
+let musicMeta = {}; // id -> { release, artist, bpm }
 let notesMap = {};
 
-const VERSIONS = [ /* バージョン配列は省略せず完全に入れています（前回と同じ） */ 
-  { name: 'CHUNITHM', from: '2015-07-16', to: '2016-02-03' },
-  { name: 'CHUNITHM PLUS', from: '2016-02-04', to: '2016-08-24' },
-  { name: 'AIR', from: '2016-08-25', to: '2017-02-08' },
-  { name: 'AIR PLUS', from: '2017-02-09', to: '2017-08-23' },
-  { name: 'STAR', from: '2017-08-24', to: '2018-03-07' },
-  { name: 'STAR PLUS', from: '2018-03-08', to: '2018-10-24' },
-  { name: 'AMAZON', from: '2018-10-25', to: '2019-04-10' },
-  { name: 'AMAZON PLUS', from: '2019-04-11', to: '2019-10-23' },
-  { name: 'CRYSTAL', from: '2019-10-24', to: '2020-07-15' },
-  { name: 'CRYSTAL PLUS', from: '2020-07-16', to: '2021-01-13' },
-  { name: 'PARADISE', from: '2021-01-14', to: '2021-05-12' },
-  { name: 'PARADISE LOST', from: '2021-05-13', to: '2021-11-03' },
-  { name: 'NEW', from: '2021-11-04', to: '2022-04-13' },
-  { name: 'NEW PLUS', from: '2022-04-14', to: '2022-10-12' },
-  { name: 'SUN', from: '2022-10-13', to: '2023-04-11' },
-  { name: 'SUN PLUS', from: '2023-04-12', to: '2023-10-04' },
-  { name: 'LUMINOUS', from: '2023-10-05', to: '2024-06-11' },
-  { name: 'LUMINOUS PLUS', from: '2024-06-12', to: '2024-12-18' },
-  { name: 'VERSE', from: '2024-12-19', to: '2025-07-15' },
-  { name: 'X-VERSE', from: '2025-07-16', to: '2025-12-10' },
-  { name: 'X-VERSE-X', from: '2025-12-11', to: '2026-07-01' },
-  { name: 'Mate', from: '2026-07-02', to: '9999-12-31' },
+// CHUNITHMのバージョンとリリース日の対応
+const VERSIONS = [
+  { name: 'CHUNITHM',           from: '2015-07-16', to: '2016-02-03' },
+  { name: 'CHUNITHM PLUS',      from: '2016-02-04', to: '2016-08-24' },
+  { name: 'AIR',                from: '2016-08-25', to: '2017-02-08' },
+  { name: 'AIR PLUS',           from: '2017-02-09', to: '2017-08-23' },
+  { name: 'STAR',               from: '2017-08-24', to: '2018-03-07' },
+  { name: 'STAR PLUS',          from: '2018-03-08', to: '2018-10-24' },
+  { name: 'AMAZON',             from: '2018-10-25', to: '2019-04-10' },
+  { name: 'AMAZON PLUS',        from: '2019-04-11', to: '2019-10-23' },
+  { name: 'CRYSTAL',            from: '2019-10-24', to: '2020-07-15' },
+  { name: 'CRYSTAL PLUS',       from: '2020-07-16', to: '2021-01-13' },
+  { name: 'PARADISE',           from: '2021-01-14', to: '2021-05-12' },
+  { name: 'PARADISE LOST',      from: '2021-05-13', to: '2021-11-03' },
+  { name: 'NEW',              from: '2021-11-04', to: '2022-04-13' },
+  { name: 'NEW PLUS',         from: '2022-04-14', to: '2022-10-12' },
+  { name: 'SUN',                from: '2022-10-13', to: '2023-04-11' },
+  { name: 'SUN PLUS',           from: '2023-04-12', to: '2023-10-04' },
+  { name: 'LUMINOUS',           from: '2023-10-05', to: '2024-06-11' },
+  { name: 'LUMINOUS PLUS',      from: '2024-06-12', to: '2024-12-18' },
+  { name: 'VERSE',              from: '2024-12-19', to: '2025-07-15' },
+  { name: 'X-VERSE',            from: '2025-07-16', to: '2025-12-10' },
+  { name: 'X-VERSE-X',          from: '2025-12-11', to: '2026-07-01' },
+  { name: 'Mate',               from: '2026-07-02', to: '9999-12-31' },
 ];
 
 function getVersion(releaseDate) {
@@ -511,16 +568,17 @@ function setStatus(type, msg) {
 
 function rank(score) {
   if (score >= 1009000) return { label: 'SSS+', color: '#FFD700' };
-  if (score >= 1007500) return { label: 'SSS', color: '#FFD700' };
-  if (score >= 1005000) return { label: 'SS+', color: '#FFA500' };
-  if (score >= 1000000) return { label: 'SS', color: '#FFA500' };
-  if (score >= 990000) return { label: 'S+', color: '#00CED1' };
-  if (score >= 975000) return { label: 'S', color: '#00CED1' };
-  if (score >= 950000) return { label: 'AAA', color: '#7B68EE' };
-  if (score >= 925000) return { label: 'AA', color: '#7B68EE' };
-  if (score >= 900000) return { label: 'A', color: '#7B68EE' };
+  if (score >= 1007500) return { label: 'SSS',  color: '#FFD700' };
+  if (score >= 1005000) return { label: 'SS+',  color: '#FFA500' };
+  if (score >= 1000000) return { label: 'SS',   color: '#FFA500' };
+  if (score >= 990000)  return { label: 'S+',   color: '#00CED1' };
+  if (score >= 975000)  return { label: 'S',    color: '#00CED1' };
+  if (score >= 950000)  return { label: 'AAA',  color: '#7B68EE' };
+  if (score >= 925000)  return { label: 'AA',   color: '#7B68EE' };
+  if (score >= 900000)  return { label: 'A',    color: '#7B68EE' };
   return { label: 'B〜', color: '#666' };
 }
+
 
 function normalizeTitleForNotes(title) {
   return String(title || '')
@@ -528,60 +586,48 @@ function normalizeTitleForNotes(title) {
     .trim()
     .toLowerCase()
     .replace(/[\s　]+/g, '')
-    .replace(/[\[\]［］【】()（）-]/g, '');  // - も除去
-}
-
-function findNoteInfo(title, notesMap) {
-  const original = String(title || '').trim();
-  const normalized = normalizeTitleForNotes(original);
-  
-  if (notesMap[original]) return notesMap[original];
-  if (notesMap[normalized]) return notesMap[normalized];
-
-  // より積極的なマッチング
-  for (const [key, song] of Object.entries(notesMap)) {
-    const nKey = normalizeTitleForNotes(key);
-    if (nKey === normalized || nKey.includes(normalized) || normalized.includes(nKey)) {
-      console.log(`一致: "${original}" → "${key}"`);
-      return song;
-    }
-  }
-
-  console.warn(`未発見: ${original}`);
-  return null;
+    .replace(/[\[\]［］【】()（）]/g, '');
 }
 
 async function loadScores() {
   const token = document.getElementById('token').value.trim();
   const region = document.getElementById('region').value;
+  const userParam = '';
   if (!token) { setStatus('err', 'トークンを入力してください'); return; }
 
   setStatus('spin', '読み込み中...');
   document.getElementById('loadBtn').disabled = true;
 
   try {
+    setStatus('spin', 'スコアデータを取得中...');
     const [recRes, musicRes, exRes] = await Promise.all([
-      fetch(`https://api.chunirec.net/2.0/records/showall.json?region=${region}&token=${encodeURIComponent(token)}`),
+      fetch(`https://api.chunirec.net/2.0/records/showall.json?region=${region}${userParam}&token=${encodeURIComponent(token)}`),
       fetch(`https://api.chunirec.net/2.0/music/showall.json?region=${region}&token=${encodeURIComponent(token)}`),
       fetch('./music-ex.json')
     ]);
-
+    if (!recRes.ok) {
+      const msgs = { 401: '認証エラー — トークンを確認してください', 403: 'アクセス拒否', 404: 'ユーザーが見つかりません' };
+      throw new Error(msgs[recRes.status] || `エラー ${recRes.status}`);
+    }
     const recData = await recRes.json();
     records = (recData.records || []).filter(Boolean);
 
-    // music meta & notes
+    // 楽曲メタ情報（バージョン判定用）を構築
     musicMeta = {};
     if (musicRes.ok) {
       const musicData = await musicRes.json();
-      musicData.forEach(m => {
+      (Array.isArray(musicData) ? musicData : []).forEach(m => {
         if (m.meta?.id) {
           const diffMaxcombo = {};
-          if (m.data) Object.entries(m.data).forEach(([d, v]) => {
-            if (v?.maxcombo) diffMaxcombo[d] = v.maxcombo;
-          });
+          if (m.data) {
+            Object.entries(m.data).forEach(([diff, d]) => {
+              if (d?.maxcombo != null) diffMaxcombo[diff] = d.maxcombo;
+            });
+          }
           musicMeta[m.meta.id] = {
             release: m.meta.release,
             artist: m.meta.artist,
+            bpm: m.meta.bpm,
             version: getVersion(m.meta.release),
             maxcombo: diffMaxcombo
           };
@@ -593,40 +639,71 @@ async function loadScores() {
       const exData = await exRes.json();
       notesMap = {};
       exData.forEach(song => {
-        const k = String(song.title || '').trim();
-        const nk = normalizeTitleForNotes(k);
-        notesMap[k] = song;
-        notesMap[nk] = song;
+        const titleKey = String(song.title || '').trim();
+        const normalizedKey = normalizeTitleForNotes(song.title);
+        if (titleKey) notesMap[titleKey] = song;
+        if (normalizedKey) notesMap[normalizedKey] = song;
       });
-      console.log(`music-ex loaded: ${exData.length} songs`);
+      console.log('music-ex loaded:', exData.length, 'notesMap keys:', Object.keys(notesMap).length);
     }
 
-    records.forEach(r => {
+    // レコードにバージョン・ノーツ数情報を付与
+records.forEach(r => {
       const m = musicMeta[r.id];
       r.version = m?.version || null;
+      r.release = m?.release || null;
       r.artist = m?.artist || null;
       r.maxcombo = m?.maxcombo?.[r.diff] ?? null;
 
-      const noteInfo = findNoteInfo(r.title, notesMap);
-      const noteKey = {BAS:'lev_bas_notes',ADV:'lev_adv_notes',EXP:'lev_exp_notes',MAS:'lev_mas_notes',ULT:'lev_ult_notes'}[r.diff];
-      r.notesTotal = noteInfo && noteKey ? Number(noteInfo[noteKey]) || null : null;
+      // === 強化版ノーツマッチング ===
+      const title = String(r.title || '').trim();
+      const normalized = normalizeTitleForNotes(title);
+      
+      let noteInfo = notesMap[title] || 
+                    notesMap[normalized];
+
+      // より寛容なマッチング（部分一致）
+      if (!noteInfo) {
+        for (const [key, song] of Object.entries(notesMap)) {
+          const nKey = normalizeTitleForNotes(key);
+          if (nKey.includes(normalized) || normalized.includes(nKey)) {
+            noteInfo = song;
+            console.log(`部分一致: ${title} → ${key}`);
+            break;
+          }
+        }
+      }
+
+      const noteKey = {
+        BAS: 'lev_bas_notes',
+        ADV: 'lev_adv_notes',
+        EXP: 'lev_exp_notes',
+        MAS: 'lev_mas_notes',
+        ULT: 'lev_ult_notes'
+      }[r.diff];
+
+      r.notesTotal =
+        noteInfo && noteKey
+          ? Number(noteInfo[noteKey]) || null
+          : null;
     });
 
     genres = new Set(records.map(r => r.genre).filter(Boolean));
     buildGenreChips();
     buildVersionChips();
     updatePool();
-    setStatus('ok', `${records.length}件読み込み完了`);
+    setStatus('ok', `${records.length}件のレコードを読み込みました`);
     document.getElementById('filterCard').style.display = 'block';
     document.getElementById('spinArea').style.display = 'block';
     document.getElementById('poolInfo').style.display = 'block';
+    document.getElementById('phld').innerHTML = '<span class="big">🎯</span>SPINボタンで曲を選ぼう！';
   } catch(e) {
     setStatus('err', e.message);
   }
   document.getElementById('loadBtn').disabled = false;
 }
 
-// 以降の関数（buildGenreChips ~ showResult）は省略せず完全に入れています
+
 function buildGenreChips() {
   const el = document.getElementById('genreFilter');
   el.innerHTML = '';
@@ -642,7 +719,9 @@ function buildGenreChips() {
 
 function buildVersionChips() {
   const el = document.getElementById('versionFilter');
+  if (!el) return;
   el.innerHTML = '';
+  // レコードに実際に存在するバージョンのみ表示（VERSIONS順）
   const present = new Set(records.map(r => r.version).filter(Boolean));
   VERSIONS.forEach(v => {
     if (!present.has(v.name)) return;
@@ -653,7 +732,9 @@ function buildVersionChips() {
     c.onclick = () => { c.classList.toggle('on'); updatePool(); };
     el.appendChild(c);
   });
-  if (records.some(r => !r.version)) {
+  // バージョン不明分
+  const hasUnknown = records.some(r => !r.version);
+  if (hasUnknown) {
     const c = document.createElement('span');
     c.className = 'chip on';
     c.dataset.v = '__unknown__';
@@ -680,10 +761,13 @@ function filtered() {
   return records.filter(r => {
     if (!diffs.includes(r.diff)) return false;
     if (!gList.includes(r.genre)) return false;
+    // バージョンフィルター
     const rv = r.version || '__unknown__';
     if (!vList.includes(rv)) return false;
     if (r.const > 0 && (r.const < cMin || r.const > cMax)) return false;
-    if (r.is_played && (r.score < sMin || r.score > sMax)) return false;
+    if (r.is_played) {
+      if (r.score < sMin || r.score > sMax) return false;
+    }
     if (!achieve.includes('any')) {
       if (achieve.includes('notaj') && r.is_alljustice) return false;
       if (achieve.includes('notfc') && (r.is_fullcombo || r.is_alljustice)) return false;
@@ -693,11 +777,14 @@ function filtered() {
 }
 
 function updatePool() {
-  document.getElementById('poolInfo').innerHTML = `対象楽曲: <span class="pool-count">${filtered().length}件</span>`;
+  const n = filtered().length;
+  document.getElementById('poolInfo').innerHTML = `対象楽曲: <span class="pool-count">${n}件</span>`;
 }
 
 function setAllVersions(on) {
-  document.querySelectorAll('#versionFilter .chip').forEach(c => c.classList.toggle('on', on));
+  document.querySelectorAll('#versionFilter .chip').forEach(c => {
+    c.classList.toggle('on', on);
+  });
   updatePool();
 }
 
@@ -705,33 +792,37 @@ document.addEventListener('click', e => {
   const chip = e.target.closest('.chip');
   if (!chip) return;
   const pid = chip.closest('[id]')?.id;
-  if (pid === 'diffFilter' || pid === 'achieveFilter') {
-    if (pid === 'achieveFilter' && chip.dataset.v === 'any') {
+  if (pid === 'diffFilter') {
+    chip.classList.toggle('on');
+    updatePool();
+  }
+  if (pid === 'achieveFilter') {
+    if (chip.dataset.v === 'any') {
       document.querySelectorAll('#achieveFilter .chip').forEach(c => c.classList.remove('on'));
       chip.classList.add('on');
-    } else if (pid === 'achieveFilter') {
+    } else {
       document.querySelector('#achieveFilter [data-v="any"]').classList.remove('on');
       chip.classList.toggle('on');
-    } else {
-      chip.classList.toggle('on');
+      if (!document.querySelector('#achieveFilter .chip.on')) {
+        document.querySelector('#achieveFilter [data-v="any"]').classList.add('on');
+      }
     }
     updatePool();
   }
 });
 
-['constMin','constMax','scoreMin','scoreMax'].forEach(id => 
+['constMin','constMax','scoreMin','scoreMax'].forEach(id =>
   document.getElementById(id).addEventListener('input', updatePool)
 );
 
 function spin() {
   const pool = filtered();
-  if (!pool.length) {
-    setStatus('err', '対象曲がありません。条件を緩めてください');
-    return;
-  }
+  if (!pool.length) { setStatus('err', '対象曲がありません。条件を緩めてください'); return; }
 
-  let count = parseInt(document.getElementById('spinCount').value) || 1;
+  const countInput = document.getElementById('spinCount');
+  let count = parseInt(countInput?.value, 10) || 1;
   count = Math.max(1, Math.min(count, pool.length, 50));
+  if (countInput) countInput.value = count;
 
   document.getElementById('phld').style.display = 'none';
   document.getElementById('resultEl').style.display = 'none';
@@ -740,28 +831,34 @@ function spin() {
   document.getElementById('spinBtn').disabled = true;
 
   let t = 0;
-  const max = 20 + Math.floor(Math.random() * 15);
+  const max = 18 + Math.floor(Math.random() * 14);
   const iv = setInterval(() => {
-    document.getElementById('rollingTitle').textContent = pool[Math.floor(Math.random() * pool.length)].title;
+    document.getElementById('rollingTitle').textContent = pool[Math.floor(Math.random()*pool.length)].title;
     if (++t >= max) {
       clearInterval(iv);
-      const picked = shuffleArray(pool).slice(0, count);
+      const pickedList = shuffleArray(pool).slice(0, count);
       rolling.style.display = 'none';
 
-      if (count === 1) showResult(picked[0]);
-      else showResults(picked);
+      if (count === 1) {
+        showResult(pickedList[0]);
+      } else {
+        showResults(pickedList);
+      }
 
       document.getElementById('spinBtn').disabled = false;
     }
-  }, 60);
+  }, 70);
 }
 
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
 function fmtLv(level) {
   if (!level || level <= 0) return null;
   const base = Math.floor(level);
-  return Math.abs(level - base - 0.5) < 0.01 ? base + '+' : String(base);
+  const isHalf = Math.abs(level - base - 0.5) < 0.01;
+  return isHalf ? base + '+' : String(base);
 }
 
 function shuffleArray(arr) {
@@ -776,32 +873,72 @@ function shuffleArray(arr) {
 function buildResultHtml(r, index) {
   const rk = r.is_played ? rank(r.score) : null;
   let badges = '';
-  if (r.is_alljustice) badges += '<span class="badge b-aj">ALL JUSTICE</span>';
+
+  let justiceCount = null;
+  if (r.is_alljustice && r.score != null && r.notesTotal) {
+    const total = r.notesTotal;
+    const p = 1000000 / total;
+    const jcCount = Math.round((r.score - p * total) / (p * 0.01));
+    justiceCount = total - jcCount;
+  }
+
+  if (r.is_alljustice) {
+    const jLabel = (justiceCount != null)
+      ? `ALL JUSTICE <span style="font-weight:400;opacity:0.85;">(J${justiceCount})</span>`
+      : 'ALL JUSTICE';
+    badges += `<span class="badge b-aj">${jLabel}</span>`;
+  }
   else if (r.is_fullcombo) badges += '<span class="badge b-fc">FULL COMBO</span>';
   if (r.is_clear) badges += '<span class="badge b-cl">CLEAR</span>';
   if (!r.is_played) badges += '<span class="badge b-no">未プレイ</span>';
 
+  const notesTotal = r.notesTotal || null;
+
   return `
-    ${index ? `<div style="color:var(--cyan);font-weight:700;">#${index}</div>` : ''}
+    ${index ? `<div style="font-family:'Rajdhani',sans-serif;color:var(--cyan);font-weight:700;letter-spacing:1px;">#${index}</div>` : ''}
     <span class="diff-badge d-${esc(r.diff)}">${esc(r.diff)}</span>
     <div class="result-title">${esc(r.title)}</div>
     ${r.artist ? `<div style="font-size:13px;color:var(--muted);">${esc(r.artist)}</div>` : ''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+      ${r.genre ? `<span class="genre-pill">${esc(r.genre)}</span>` : ''}
+      ${r.version ? `<span class="genre-pill" style="color:#a080ff;border-color:#4030a0;">${esc(r.version)}</span>` : ''}
+    </div>
     <div class="meta">
       ${r.const > 0 ? `<div class="meta-chip">定数 <b>${r.const.toFixed(1)}</b></div>` : ''}
       ${fmtLv(r.level) ? `<div class="meta-chip">Lv <b>${fmtLv(r.level)}</b></div>` : ''}
-      <div class="meta-chip">ノーツ数 <b>${r.notesTotal ? r.notesTotal.toLocaleString() : '取得失敗'}</b></div>
+      <div class="meta-chip">ノーツ数 <b>${notesTotal ? notesTotal.toLocaleString() : '取得失敗'}</b></div>
+      ${r.is_played && r.rating ? `<div class="meta-chip">Rating <b>${r.rating.toFixed(2)}</b></div>` : ''}
     </div>
-    ${r.is_played && r.score ? `<div class="score-line"><div class="score-num">${r.score.toLocaleString()}</div>${rk ? `<div class="rank-badge" style="background:${rk.color}22;color:${rk.color};">${rk.label}</div>` : ''}</div>` : ''}
+    ${r.is_played && r.score ? `
+      <div class="score-line">
+        <div class="score-num">${r.score.toLocaleString()}</div>
+        ${rk ? `<div class="rank-badge" style="background:${rk.color}22;color:${rk.color};border:1px solid ${rk.color}55;">${rk.label}</div>` : ''}
+      </div>` : ''}
     ${badges ? `<div class="badges">${badges}</div>` : ''}
   `;
 }
 
 function showResults(list) {
-  document.getElementById('resultEl').innerHTML = `<div class="multi-results">${list.map((r,i) => `<div class="multi-result-card">${buildResultHtml(r,i+1)}</div>`).join('')}</div>`;
+  console.log('PICKED_LIST=', list.map(r => ({ id: r.id, title: r.title, diff: r.diff })));
+  document.getElementById('resultEl').innerHTML = `
+    <div class="multi-results">
+      ${list.map((r, i) => `<div class="multi-result-card">${buildResultHtml(r, i + 1)}</div>`).join('')}
+    </div>
+  `;
   document.getElementById('resultEl').style.display = 'flex';
 }
 
+
 function showResult(r) {
+  console.log(
+    'ID=', r.id,
+    'TITLE=', r.title,
+    'NORMALIZED_TITLE=', normalizeTitleForNotes(r.title),
+    'DIFF=', r.diff,
+    'NOTES=', r.notesTotal,
+    'NOTES_MAP_HIT=', !!(notesMap[String(r.title || '').trim()] || notesMap[normalizeTitleForNotes(r.title)])
+  );
+
   document.getElementById('resultEl').innerHTML = buildResultHtml(r);
   document.getElementById('resultEl').style.display = 'flex';
 }
@@ -810,9 +947,93 @@ function showResult(r) {
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const tokenEl = document.getElementById('token');
+  const regionEl = document.getElementById('region');
+
   tokenEl.value = localStorage.getItem('chunirec_token') || '';
-  tokenEl.addEventListener('input', () => localStorage.setItem('chunirec_token', tokenEl.value));
+  regionEl.value = localStorage.getItem('chunirec_region') || 'jp2';
+
+  const apiSettings = document.getElementById('apiSettings');
+  if (apiSettings) {
+    if (tokenEl.value) apiSettings.removeAttribute('open');
+    else apiSettings.setAttribute('open', '');
+  }
+
+  tokenEl.addEventListener('input', () => {
+    localStorage.setItem('chunirec_token', tokenEl.value);
+  });
+
+  regionEl.addEventListener('change', () => {
+    localStorage.setItem('chunirec_region', regionEl.value);
+  });
 });
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const tokenEl = document.getElementById('token');
+
+  const saved = localStorage.getItem('chunirec_token');
+  if (saved) tokenEl.value = saved;
+
+  tokenEl.addEventListener('input', () => {
+    localStorage.setItem('chunirec_token', tokenEl.value);
+  });
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'btn-sub';
+  clearBtn.textContent = '保存済みトークンを削除';
+  clearBtn.style.marginTop = '8px';
+
+  clearBtn.onclick = () => {
+    localStorage.removeItem('chunirec_token');
+    tokenEl.value = '';
+    document.getElementById('apiSettings')?.setAttribute('open', '');
+    alert('保存済みトークンを削除しました');
+  };
+
+  (document.getElementById('apiSettings') || document.getElementById('apiCard')).appendChild(clearBtn);
+
+  window.addEventListener('beforeunload', () => {
+    if (tokenEl.value.length > 200) {
+      localStorage.removeItem('chunirec_token');
+    }
+  });
+});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const token = document.getElementById('token');
+  const toggle = document.getElementById('toggleToken');
+
+  if (toggle) {
+    toggle.onclick = () => {
+      token.type = token.type === 'password' ? 'text' : 'password';
+    };
+  }
+
+  // Auto load if token exists
+  const saved = localStorage.getItem('chunirec_token');
+  if (saved && typeof loadScores === 'function') {
+    setTimeout(() => {
+      loadScores().catch?.(()=>{});
+    }, 500);
+  }
+});
+
+// Improve auth error message
+const _origLoadScores = window.loadScores;
+if (_origLoadScores) {
+  window.loadScores = async function() {
+    try {
+      return await _origLoadScores();
+    } catch(e) {
+      throw e;
+    }
+  }
+}
 </script>
 
 </body>
