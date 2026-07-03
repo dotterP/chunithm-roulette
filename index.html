@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta http-equiv="Content-Security-Policy"
+content="default-src 'self';
+connect-src 'self' https://api.chunirec.net;
+style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+font-src https://fonts.gstatic.com;
+img-src 'self' data:;
+script-src 'self' 'unsafe-inline';
+base-uri 'none';
+form-action 'self';">
+
+<title>CHUNITHM 楽曲ルーレット</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --orange: #FF6B00;
+  --yellow: #FFD600;
+  --cyan: #00E5FF;
+  --dark: #0A0A14;
+  --surface: #12121E;
+  --card: #1A1A2E;
+  --border: #2A2A4A;
+  --text: #E8E8FF;
+  --muted: #7070A0;
+}
+body {
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  min-height: 100vh;
+  padding: 20px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.header h1 {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--orange);
+  text-transform: uppercase;
+}
+.header p { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cyan);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+.row label { font-size: 12px; color: var(--muted); min-width: 90px; }
+
+input, select {
+  background: #0D0D1A;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif;
+  flex: 1;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus { border-color: var(--cyan); }
+input::placeholder { color: var(--muted); }
+input[type="number"] { -moz-appearance: textfield; }
+
+.btn-main {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #FF6B00, #FF9500);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  margin-bottom: 10px;
+}
+.btn-main:hover { opacity: 0.88; }
+.btn-main:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-sub {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  border: 1px solid var(--cyan);
+  border-radius: 8px;
+  color: var(--cyan);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-sub:hover { background: rgba(0,229,255,0.1); }
+
+.status-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.dot.ok { background: #00E676; }
+.dot.err { background: #FF5252; }
+.dot.spin { background: var(--orange); animation: pulse 0.8s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+.filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.filter-label { font-size: 11px; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  background: #0D0D1A;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--muted);
+  user-select: none;
+}
+.chip.on { background: rgba(0,229,255,0.12); border-color: var(--cyan); color: var(--cyan); }
+
+.range-row { display: flex; align-items: center; gap: 8px; }
+.range-row input { padding: 7px 8px; flex: 1; }
+.range-sep { font-size: 13px; color: var(--muted); flex-shrink: 0; }
+
+.roulette {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 20px;
+  margin-bottom: 16px;
+  text-align: center;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.placeholder { color: var(--muted); font-size: 14px; line-height: 2; }
+.placeholder .big { font-size: 42px; display: block; margin-bottom: 8px; }
+
+.rolling { display: none; flex-direction: column; align-items: center; gap: 6px; }
+.rolling-label { font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+.rolling-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--orange);
+  animation: flicker 0.12s infinite;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@keyframes flicker { 0%{opacity:1}60%{opacity:0.6}100%{opacity:1} }
+
+.result { display: none; flex-direction: column; align-items: center; gap: 10px; animation: zoomIn 0.3s ease-out; }
+@keyframes zoomIn { from{transform:scale(0.88);opacity:0}to{transform:scale(1);opacity:1} }
+
+.diff-badge {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 14px;
+  border-radius: 20px;
+}
+.d-BAS { background: #00AA44; color: #fff; }
+.d-ADV { background: #EE7700; color: #fff; }
+.d-EXP { background: #CC0055; color: #fff; }
+.d-MAS { background: #9900CC; color: #fff; }
+.d-ULT { background: #111; color: #FFD700; border: 1px solid #FFD700; }
+
+.result-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.35;
+  text-align: center;
+  width: 100%;
+}
+
+.genre-pill {
+  font-size: 11px;
+  color: var(--muted);
+  background: #0D0D1A;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.meta { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.meta-chip {
+  font-size: 12px;
+  color: var(--muted);
+  background: #0D0D1A;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+.meta-chip b { color: var(--text); font-weight: 500; }
+
+.score-line { 
+  display: flex; 
+  align-items: center; 
+  gap: 14px;
+  justify-content: center;  
+}
+.score-num {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--yellow);
+  letter-spacing: 2px;
+}
+.rank-badge {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  padding: 4px 16px;
+  border-radius: 6px;
+}
+
+.badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.b-aj { background: #FFD700; color: #1A0000; }
+.b-fc { background: #00E5FF; color: #001A1A; }
+.b-cl { background: #00E676; color: #001A00; }
+.b-no { background: #FF5252; color: #fff; }
+
+.multi-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+.multi-result-card {
+  background: #0D0D1A;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.multi-result-card .result-title {
+  font-size: 18px;
+}
+.spin-options {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.spin-options label {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.spin-options input {
+  max-width: 120px;
+}
+
+.pool-info { text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+.pool-count { color: var(--cyan); font-weight: 600; }
+
+.api-details {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  background: rgba(13,13,26,0.45);
+}
+.api-details summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--cyan);
+  user-select: none;
+  padding: 6px 2px;
+  list-style: none;
+}
+.api-details summary::-webkit-details-marker { display: none; }
+.api-details summary::before {
+  content: '▶';
+  display: inline-block;
+  margin-right: 8px;
+  transition: transform 0.2s;
+}
+.api-details[open] summary::before { transform: rotate(90deg); }
+.api-details[open] summary { margin-bottom: 10px; }
+.api-details .hint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+  text-align: center;
+}
+
+
+/* Mobile enhancement */
+@media (max-width: 768px) {
+  body {
+    padding: 12px;
+    max-width: 100%;
+  }
+  .header h1 {
+    font-size: 26px;
+    letter-spacing: 2px;
+  }
+  .card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .row label {
+    min-width: auto;
+    font-size: 13px;
+  }
+  input, select {
+    font-size: 16px;
+  }
+  .filter-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .chip {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .result-title {
+    font-size: 26px;
+    line-height: 1.4;
+  }
+  .score-num {
+    font-size: 36px;
+  }
+  .btn-main {
+    min-height: 56px;
+  }
+  #spinBtn {
+    min-height: 72px !important;
+    font-size: 28px !important;
+  }
+  .meta {
+    gap: 6px;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎯 CHUNITHM Roulette</h1>
+  <p>chunirec連携 · スコアフィルター対応 · 楽曲ランダム選曲ツール</p>
+</div>
+
+<!-- API設定 -->
+<div class="card" id="apiCard">
+  <div class="card-title">⚙ chunirec 設定</div>
+
+  <details class="api-details" id="apiSettings" open>
+    <summary>API設定を開く / 閉じる</summary>
+<div class="row">
+    <label>APIトークン</label>
+    <div style="display:flex;gap:8px;flex:1;"><input type="password" id="token" placeholder="chunirecアクセストークン" style="flex:1;" /><button type="button" id="toggleToken" class="btn-sub" style="width:auto;padding:8px 12px;">👁</button></div>
+  </div>
+  <div class="row">
+    <label>地域</label>
+    <select id="region">
+      <option value="jp2">JP2 (現行バージョン)</option>
+      <option value="jp">JP (旧バージョン)</option>
+    </select>
+  </div>
+<p class="hint">
+      トークンは <a href="https://developer.chunirec.net/" target="_blank" style="color:var(--cyan);">developer.chunirec.net</a> で発行できます
+    </p>
+  </details>
+
+  <button class="btn-main" id="loadBtn" onclick="loadScores()">スコアを読み込む</button>
+</div>
+
+<!-- ステータス -->
+<div class="status-bar">
+  <div class="dot" id="statusDot"></div>
+  <span id="statusText">トークンを入力してスコアを読み込んでください</span>
+</div>
+
+<!-- フィルター -->
+<div class="card" id="filterCard" style="display:none;">
+  <div class="card-title">🔍 フィルター設定</div>
+
+  <div class="filter-grid">
+    <div>
+      <span class="filter-label">難易度</span>
+      <div class="chips" id="diffFilter">
+        <span class="chip on" data-v="BAS">BAS</span>
+        <span class="chip on" data-v="ADV">ADV</span>
+        <span class="chip on" data-v="EXP">EXP</span>
+        <span class="chip on" data-v="MAS">MAS</span>
+        <span class="chip on" data-v="ULT">ULT</span>
+      </div>
+    </div>
+    </div>
+
+  <div class="filter-grid">
+    <div>
+      <span class="filter-label">定数 (CONST)</span>
+      <div class="range-row">
+        <input type="number" id="constMin" value="1" min="1" max="16" step="0.1" style="flex:1;" />
+        <span class="range-sep">〜</span>
+        <input type="number" id="constMax" value="16" min="1" max="16" step="0.1" style="flex:1;" />
+      </div>
+    </div>
+    <div>
+      <span class="filter-label">スコア範囲</span>
+      <div class="range-row">
+        <input type="number" id="scoreMin" value="0" min="0" max="1010000" step="1000" style="flex:1;" />
+        <span class="range-sep">〜</span>
+        <input type="number" id="scoreMax" value="1010000" min="0" max="1010000" step="1000" style="flex:1;" />
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:12px;">
+    <span class="filter-label">アチーブメント条件</span>
+    <div class="chips" id="achieveFilter">
+      <span class="chip on" data-v="any">すべて</span>
+      <span class="chip" data-v="notaj">未AJ</span>
+      <span class="chip" data-v="notfc">未FC</span>
+      
+    </div>
+  </div>
+
+  <div>
+    <span class="filter-label">ジャンル</span>
+    <div class="chips" id="genreFilter"></div>
+  </div>
+
+  <div style="margin-top:12px;">
+    <span class="filter-label">バージョン</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+      <button type="button" class="chip" style="font-size:11px;padding:3px 10px;" onclick="setAllVersions(true)">全選択</button>
+      <button type="button" class="chip" style="font-size:11px;padding:3px 10px;" onclick="setAllVersions(false)">全解除</button>
+    </div>
+    <div class="chips" id="versionFilter"></div>
+  </div>
+</div>
+
+<div class="pool-info" id="poolInfo" style="display:none;"></div>
+
+<!-- ルーレット表示 -->
+<div class="roulette" id="rouletteBox">
+  <div class="placeholder" id="phld">
+    <span class="big">🎮</span>
+    スコアを読み込んで<br>ルーレットをまわそう！
+  </div>
+  <div class="rolling" id="rollingEl">
+    <div class="rolling-label">Selecting...</div>
+    <div class="rolling-title" id="rollingTitle">---</div>
+  </div>
+  <div class="result" id="resultEl"></div>
+</div>
+
+<div id="spinArea" style="display:none;">
+  <div class="spin-options">
+    <label for="spinCount">抽選回数</label>
+    <input type="number" id="spinCount" value="1" min="1" max="50" step="1" />
+  </div>
+  <button class="btn-main" id="spinBtn" onclick="spin()" style="font-size:22px;padding:18px;letter-spacing:4px;">🎯 SPIN!</button>
+</div>
+
+<script>
+let records = [];
+let genres = new Set();
+let musicMeta = {}; // id -> { release, artist, bpm }
+let notesMap = {};
+
+// CHUNITHMのバージョンとリリース日の対応
+const VERSIONS = [
+  { name: 'CHUNITHM',           from: '2015-07-16', to: '2016-02-03' },
+  { name: 'CHUNITHM PLUS',      from: '2016-02-04', to: '2016-08-24' },
+  { name: 'AIR',                from: '2016-08-25', to: '2017-02-08' },
+  { name: 'AIR PLUS',           from: '2017-02-09', to: '2017-08-23' },
+  { name: 'STAR',               from: '2017-08-24', to: '2018-03-07' },
+  { name: 'STAR PLUS',          from: '2018-03-08', to: '2018-10-24' },
+  { name: 'AMAZON',             from: '2018-10-25', to: '2019-04-10' },
+  { name: 'AMAZON PLUS',        from: '2019-04-11', to: '2019-10-23' },
+  { name: 'CRYSTAL',            from: '2019-10-24', to: '2020-07-15' },
+  { name: 'CRYSTAL PLUS',       from: '2020-07-16', to: '2021-01-13' },
+  { name: 'PARADISE',           from: '2021-01-14', to: '2021-05-12' },
+  { name: 'PARADISE LOST',      from: '2021-05-13', to: '2021-11-03' },
+  { name: 'NEW',              from: '2021-11-04', to: '2022-04-13' },
+  { name: 'NEW PLUS',         from: '2022-04-14', to: '2022-10-12' },
+  { name: 'SUN',                from: '2022-10-13', to: '2023-04-11' },
+  { name: 'SUN PLUS',           from: '2023-04-12', to: '2023-10-04' },
+  { name: 'LUMINOUS',           from: '2023-10-05', to: '2024-06-11' },
+  { name: 'LUMINOUS PLUS',      from: '2024-06-12', to: '2024-12-18' },
+  { name: 'VERSE',              from: '2024-12-19', to: '2025-07-15' },
+  { name: 'X-VERSE',            from: '2025-07-16', to: '2025-12-10' },
+  { name: 'X-VERSE-X',          from: '2025-12-11', to: '2026-07-01' },
+  { name: 'Mate',               from: '2026-07-02', to: '9999-12-31' },
+];
+
+function getVersion(releaseDate) {
+  if (!releaseDate) return null;
+  const d = releaseDate.slice(0, 10);
+  for (const v of VERSIONS) {
+    if (d >= v.from && d <= v.to) return v.name;
+  }
+  return null;
+}
+
+function setStatus(type, msg) {
+  document.getElementById('statusDot').className = 'dot ' + type;
+  document.getElementById('statusText').textContent = msg;
+}
+
+function rank(score) {
+  if (score >= 1009000) return { label: 'SSS+', color: '#FFD700' };
+  if (score >= 1007500) return { label: 'SSS',  color: '#FFD700' };
+  if (score >= 1005000) return { label: 'SS+',  color: '#FFA500' };
+  if (score >= 1000000) return { label: 'SS',   color: '#FFA500' };
+  if (score >= 990000)  return { label: 'S+',   color: '#00CED1' };
+  if (score >= 975000)  return { label: 'S',    color: '#00CED1' };
+  if (score >= 950000)  return { label: 'AAA',  color: '#7B68EE' };
+  if (score >= 925000)  return { label: 'AA',   color: '#7B68EE' };
+  if (score >= 900000)  return { label: 'A',    color: '#7B68EE' };
+  return { label: 'B〜', color: '#666' };
+}
+
+
+function normalizeTitleForNotes(title) {
+  return String(title || '')
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s　]+/g, '')
+    .replace(/[\[\]［］【】()（）]/g, '');
+}
+
+async function loadScores() {
+  const token = document.getElementById('token').value.trim();
+  const region = document.getElementById('region').value;
+  const userParam = '';
+  if (!token) { setStatus('err', 'トークンを入力してください'); return; }
+
+  setStatus('spin', '読み込み中...');
+  document.getElementById('loadBtn').disabled = true;
+
+  try {
+    setStatus('spin', 'スコアデータを取得中...');
+    const [recRes, musicRes, exRes] = await Promise.all([
+      fetch(`https://api.chunirec.net/2.0/records/showall.json?region=${region}${userParam}&token=${encodeURIComponent(token)}`),
+      fetch(`https://api.chunirec.net/2.0/music/showall.json?region=${region}&token=${encodeURIComponent(token)}`),
+      fetch('./music-ex.json')
+    ]);
+    if (!recRes.ok) {
+      const msgs = { 401: '認証エラー — トークンを確認してください', 403: 'アクセス拒否', 404: 'ユーザーが見つかりません' };
+      throw new Error(msgs[recRes.status] || `エラー ${recRes.status}`);
+    }
+    const recData = await recRes.json();
+    records = (recData.records || []).filter(Boolean);
+
+    // 楽曲メタ情報（バージョン判定用）を構築
+    musicMeta = {};
+    if (musicRes.ok) {
+      const musicData = await musicRes.json();
+      (Array.isArray(musicData) ? musicData : []).forEach(m => {
+        if (m.meta?.id) {
+          const diffMaxcombo = {};
+          if (m.data) {
+            Object.entries(m.data).forEach(([diff, d]) => {
+              if (d?.maxcombo != null) diffMaxcombo[diff] = d.maxcombo;
+            });
+          }
+          musicMeta[m.meta.id] = {
+            release: m.meta.release,
+            artist: m.meta.artist,
+            bpm: m.meta.bpm,
+            version: getVersion(m.meta.release),
+            maxcombo: diffMaxcombo
+          };
+        }
+      });
+    }
+
+    if (exRes.ok) {
+      const exData = await exRes.json();
+      notesMap = {};
+      exData.forEach(song => {
+        const titleKey = String(song.title || '').trim();
+        const normalizedKey = normalizeTitleForNotes(song.title);
+        if (titleKey) notesMap[titleKey] = song;
+        if (normalizedKey) notesMap[normalizedKey] = song;
+      });
+      console.log('music-ex loaded:', exData.length, 'notesMap keys:', Object.keys(notesMap).length);
+    }
+
+    // レコードにバージョン・ノーツ数情報を付与
+records.forEach(r => {
+      const m = musicMeta[r.id];
+      r.version = m?.version || null;
+      r.release = m?.release || null;
+      r.artist = m?.artist || null;
+      r.maxcombo = m?.maxcombo?.[r.diff] ?? null;
+
+      // === 強化版ノーツマッチング ===
+      const title = String(r.title || '').trim();
+      const normalized = normalizeTitleForNotes(title);
+      
+      let noteInfo = notesMap[title] || 
+                    notesMap[normalized];
+
+      // より寛容なマッチング（部分一致）
+      if (!noteInfo) {
+        for (const [key, song] of Object.entries(notesMap)) {
+          const nKey = normalizeTitleForNotes(key);
+          if (nKey.includes(normalized) || normalized.includes(nKey)) {
+            noteInfo = song;
+            console.log(`部分一致: ${title} → ${key}`);
+            break;
+          }
+        }
+      }
+
+      const noteKey = {
+        BAS: 'lev_bas_notes',
+        ADV: 'lev_adv_notes',
+        EXP: 'lev_exp_notes',
+        MAS: 'lev_mas_notes',
+        ULT: 'lev_ult_notes'
+      }[r.diff];
+
+      r.notesTotal =
+        noteInfo && noteKey
+          ? Number(noteInfo[noteKey]) || null
+          : null;
+    });
+
+    genres = new Set(records.map(r => r.genre).filter(Boolean));
+    buildGenreChips();
+    buildVersionChips();
+    updatePool();
+    setStatus('ok', `${records.length}件のレコードを読み込みました`);
+    document.getElementById('filterCard').style.display = 'block';
+    document.getElementById('spinArea').style.display = 'block';
+    document.getElementById('poolInfo').style.display = 'block';
+    document.getElementById('phld').innerHTML = '<span class="big">🎯</span>SPINボタンで曲を選ぼう！';
+  } catch(e) {
+    setStatus('err', e.message);
+  }
+  document.getElementById('loadBtn').disabled = false;
+}
+
+
+function buildGenreChips() {
+  const el = document.getElementById('genreFilter');
+  el.innerHTML = '';
+  [...genres].sort().forEach(g => {
+    const c = document.createElement('span');
+    c.className = 'chip on';
+    c.dataset.v = g;
+    c.textContent = g;
+    c.onclick = () => { c.classList.toggle('on'); updatePool(); };
+    el.appendChild(c);
+  });
+}
+
+function buildVersionChips() {
+  const el = document.getElementById('versionFilter');
+  if (!el) return;
+  el.innerHTML = '';
+  // レコードに実際に存在するバージョンのみ表示（VERSIONS順）
+  const present = new Set(records.map(r => r.version).filter(Boolean));
+  VERSIONS.forEach(v => {
+    if (!present.has(v.name)) return;
+    const c = document.createElement('span');
+    c.className = 'chip on';
+    c.dataset.v = v.name;
+    c.textContent = v.name;
+    c.onclick = () => { c.classList.toggle('on'); updatePool(); };
+    el.appendChild(c);
+  });
+  // バージョン不明分
+  const hasUnknown = records.some(r => !r.version);
+  if (hasUnknown) {
+    const c = document.createElement('span');
+    c.className = 'chip on';
+    c.dataset.v = '__unknown__';
+    c.textContent = '不明';
+    c.onclick = () => { c.classList.toggle('on'); updatePool(); };
+    el.appendChild(c);
+  }
+}
+
+function activeVals(id) {
+  return [...document.querySelectorAll(`#${id} .chip.on`)].map(c => c.dataset.v);
+}
+
+function filtered() {
+  const diffs = activeVals('diffFilter');
+  const achieve = activeVals('achieveFilter');
+  const gList = activeVals('genreFilter');
+  const vList = activeVals('versionFilter');
+  const cMin = parseFloat(document.getElementById('constMin').value) || 0;
+  const cMax = parseFloat(document.getElementById('constMax').value) || 16;
+  const sMin = parseInt(document.getElementById('scoreMin').value) || 0;
+  const sMax = parseInt(document.getElementById('scoreMax').value) || 1010000;
+
+  return records.filter(r => {
+    if (!diffs.includes(r.diff)) return false;
+    if (!gList.includes(r.genre)) return false;
+    // バージョンフィルター
+    const rv = r.version || '__unknown__';
+    if (!vList.includes(rv)) return false;
+    if (r.const > 0 && (r.const < cMin || r.const > cMax)) return false;
+    if (r.is_played) {
+      if (r.score < sMin || r.score > sMax) return false;
+    }
+    if (!achieve.includes('any')) {
+      if (achieve.includes('notaj') && r.is_alljustice) return false;
+      if (achieve.includes('notfc') && (r.is_fullcombo || r.is_alljustice)) return false;
+    }
+    return true;
+  });
+}
+
+function updatePool() {
+  const n = filtered().length;
+  document.getElementById('poolInfo').innerHTML = `対象楽曲: <span class="pool-count">${n}件</span>`;
+}
+
+function setAllVersions(on) {
+  document.querySelectorAll('#versionFilter .chip').forEach(c => {
+    c.classList.toggle('on', on);
+  });
+  updatePool();
+}
+
+document.addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  const pid = chip.closest('[id]')?.id;
+  if (pid === 'diffFilter') {
+    chip.classList.toggle('on');
+    updatePool();
+  }
+  if (pid === 'achieveFilter') {
+    if (chip.dataset.v === 'any') {
+      document.querySelectorAll('#achieveFilter .chip').forEach(c => c.classList.remove('on'));
+      chip.classList.add('on');
+    } else {
+      document.querySelector('#achieveFilter [data-v="any"]').classList.remove('on');
+      chip.classList.toggle('on');
+      if (!document.querySelector('#achieveFilter .chip.on')) {
+        document.querySelector('#achieveFilter [data-v="any"]').classList.add('on');
+      }
+    }
+    updatePool();
+  }
+});
+
+['constMin','constMax','scoreMin','scoreMax'].forEach(id =>
+  document.getElementById(id).addEventListener('input', updatePool)
+);
+
+function spin() {
+  const pool = filtered();
+  if (!pool.length) { setStatus('err', '対象曲がありません。条件を緩めてください'); return; }
+
+  const countInput = document.getElementById('spinCount');
+  let count = parseInt(countInput?.value, 10) || 1;
+  count = Math.max(1, Math.min(count, pool.length, 50));
+  if (countInput) countInput.value = count;
+
+  document.getElementById('phld').style.display = 'none';
+  document.getElementById('resultEl').style.display = 'none';
+  const rolling = document.getElementById('rollingEl');
+  rolling.style.display = 'flex';
+  document.getElementById('spinBtn').disabled = true;
+
+  let t = 0;
+  const max = 18 + Math.floor(Math.random() * 14);
+  const iv = setInterval(() => {
+    document.getElementById('rollingTitle').textContent = pool[Math.floor(Math.random()*pool.length)].title;
+    if (++t >= max) {
+      clearInterval(iv);
+      const pickedList = shuffleArray(pool).slice(0, count);
+      rolling.style.display = 'none';
+
+      if (count === 1) {
+        showResult(pickedList[0]);
+      } else {
+        showResults(pickedList);
+      }
+
+      document.getElementById('spinBtn').disabled = false;
+    }
+  }, 70);
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fmtLv(level) {
+  if (!level || level <= 0) return null;
+  const base = Math.floor(level);
+  const isHalf = Math.abs(level - base - 0.5) < 0.01;
+  return isHalf ? base + '+' : String(base);
+}
+
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildResultHtml(r, index) {
+  const rk = r.is_played ? rank(r.score) : null;
+  let badges = '';
+
+  let justiceCount = null;
+  if (r.is_alljustice && r.score != null && r.notesTotal) {
+    const total = r.notesTotal;
+    const p = 1000000 / total;
+    const jcCount = Math.round((r.score - p * total) / (p * 0.01));
+    justiceCount = total - jcCount;
+  }
+
+  if (r.is_alljustice) {
+    const jLabel = (justiceCount != null)
+      ? `ALL JUSTICE <span style="font-weight:400;opacity:0.85;">(J${justiceCount})</span>`
+      : 'ALL JUSTICE';
+    badges += `<span class="badge b-aj">${jLabel}</span>`;
+  }
+  else if (r.is_fullcombo) badges += '<span class="badge b-fc">FULL COMBO</span>';
+  if (r.is_clear) badges += '<span class="badge b-cl">CLEAR</span>';
+  if (!r.is_played) badges += '<span class="badge b-no">未プレイ</span>';
+
+  const notesTotal = r.notesTotal || null;
+
+  return `
+    ${index ? `<div style="font-family:'Rajdhani',sans-serif;color:var(--cyan);font-weight:700;letter-spacing:1px;">#${index}</div>` : ''}
+    <span class="diff-badge d-${esc(r.diff)}">${esc(r.diff)}</span>
+    <div class="result-title">${esc(r.title)}</div>
+    ${r.artist ? `<div style="font-size:13px;color:var(--muted);">${esc(r.artist)}</div>` : ''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;">
+      ${r.genre ? `<span class="genre-pill">${esc(r.genre)}</span>` : ''}
+      ${r.version ? `<span class="genre-pill" style="color:#a080ff;border-color:#4030a0;">${esc(r.version)}</span>` : ''}
+    </div>
+    <div class="meta">
+      ${r.const > 0 ? `<div class="meta-chip">定数 <b>${r.const.toFixed(1)}</b></div>` : ''}
+      ${fmtLv(r.level) ? `<div class="meta-chip">Lv <b>${fmtLv(r.level)}</b></div>` : ''}
+      <div class="meta-chip">ノーツ数 <b>${notesTotal ? notesTotal.toLocaleString() : '取得失敗'}</b></div>
+      ${r.is_played && r.rating ? `<div class="meta-chip">Rating <b>${r.rating.toFixed(2)}</b></div>` : ''}
+    </div>
+    ${r.is_played && r.score ? `
+      <div class="score-line">
+        <div class="score-num">${r.score.toLocaleString()}</div>
+        ${rk ? `<div class="rank-badge" style="background:${rk.color}22;color:${rk.color};border:1px solid ${rk.color}55;">${rk.label}</div>` : ''}
+      </div>` : ''}
+    ${badges ? `<div class="badges">${badges}</div>` : ''}
+  `;
+}
+
+function showResults(list) {
+  console.log('PICKED_LIST=', list.map(r => ({ id: r.id, title: r.title, diff: r.diff })));
+  document.getElementById('resultEl').innerHTML = `
+    <div class="multi-results">
+      ${list.map((r, i) => `<div class="multi-result-card">${buildResultHtml(r, i + 1)}</div>`).join('')}
+    </div>
+  `;
+  document.getElementById('resultEl').style.display = 'flex';
+}
+
+
+function showResult(r) {
+  console.log(
+    'ID=', r.id,
+    'TITLE=', r.title,
+    'NORMALIZED_TITLE=', normalizeTitleForNotes(r.title),
+    'DIFF=', r.diff,
+    'NOTES=', r.notesTotal,
+    'NOTES_MAP_HIT=', !!(notesMap[String(r.title || '').trim()] || notesMap[normalizeTitleForNotes(r.title)])
+  );
+
+  document.getElementById('resultEl').innerHTML = buildResultHtml(r);
+  document.getElementById('resultEl').style.display = 'flex';
+}
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const tokenEl = document.getElementById('token');
+  const regionEl = document.getElementById('region');
+
+  tokenEl.value = localStorage.getItem('chunirec_token') || '';
+  regionEl.value = localStorage.getItem('chunirec_region') || 'jp2';
+
+  const apiSettings = document.getElementById('apiSettings');
+  if (apiSettings) {
+    if (tokenEl.value) apiSettings.removeAttribute('open');
+    else apiSettings.setAttribute('open', '');
+  }
+
+  tokenEl.addEventListener('input', () => {
+    localStorage.setItem('chunirec_token', tokenEl.value);
+  });
+
+  regionEl.addEventListener('change', () => {
+    localStorage.setItem('chunirec_region', regionEl.value);
+  });
+});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const tokenEl = document.getElementById('token');
+
+  const saved = localStorage.getItem('chunirec_token');
+  if (saved) tokenEl.value = saved;
+
+  tokenEl.addEventListener('input', () => {
+    localStorage.setItem('chunirec_token', tokenEl.value);
+  });
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'btn-sub';
+  clearBtn.textContent = '保存済みトークンを削除';
+  clearBtn.style.marginTop = '8px';
+
+  clearBtn.onclick = () => {
+    localStorage.removeItem('chunirec_token');
+    tokenEl.value = '';
+    document.getElementById('apiSettings')?.setAttribute('open', '');
+    alert('保存済みトークンを削除しました');
+  };
+
+  (document.getElementById('apiSettings') || document.getElementById('apiCard')).appendChild(clearBtn);
+
+  window.addEventListener('beforeunload', () => {
+    if (tokenEl.value.length > 200) {
+      localStorage.removeItem('chunirec_token');
+    }
+  });
+});
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const token = document.getElementById('token');
+  const toggle = document.getElementById('toggleToken');
+
+  if (toggle) {
+    toggle.onclick = () => {
+      token.type = token.type === 'password' ? 'text' : 'password';
+    };
+  }
+
+  // Auto load if token exists
+  const saved = localStorage.getItem('chunirec_token');
+  if (saved && typeof loadScores === 'function') {
+    setTimeout(() => {
+      loadScores().catch?.(()=>{});
+    }, 500);
+  }
+});
+
+// Improve auth error message
+const _origLoadScores = window.loadScores;
+if (_origLoadScores) {
+  window.loadScores = async function() {
+    try {
+      return await _origLoadScores();
+    } catch(e) {
+      throw e;
+    }
+  }
+}
+</script>
+
+</body>
+</html>
